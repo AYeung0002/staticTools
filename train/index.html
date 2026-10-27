@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>柯士甸 ↔ 旺角 · 屯馬綫轉觀塘綫</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa; color: #1e2a3a; min-height: 100vh;
+            display: flex; justify-content: center; padding: 24px 16px;
+        }
+        .app { width: 100%; max-width: 640px; }
+
+        /* 標題列：標題在左，Pill Button 在右上角 */
+        header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 12px; margin-bottom: 20px;
+        }
+        .header-text h1 {
+            font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px;
+        }
+        .header-text p { font-size: 0.85rem; color: #5a6a7a; line-height: 1.5; }
+
+        .pill-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 999px; border: 1.5px solid #d0d8e0;
+            background: #fff; color: #3a4a5a; font-size: 0.76rem; font-weight: 500;
+            cursor: pointer; transition: all 0.15s; user-select: none;
+            white-space: nowrap; flex-shrink: 0; margin-top: 2px;
+        }
+        .pill-btn:hover { border-color: #b0bcc8; background: #fafbfc; }
+        .pill-btn:active { transform: scale(0.97); }
+        .pill-btn.busy { border-color: #0b6bcb; color: #0b6bcb; background: #f0f7ff; cursor: default; }
+        .pill-dot {
+            display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+            background: #2f9e44;
+        }
+        .pill-btn.busy .pill-dot { background: #0b6bcb; animation: pulse 0.9s ease-in-out infinite; }
+        .pill-btn.error .pill-dot { background: #e03131; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .direction-bar {
+            background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: flex; gap: 8px;
+        }
+        .direction-bar button {
+            flex: 1; padding: 12px 8px; border: 1.5px solid #d0d8e0; border-radius: 12px;
+            background: #fff; font-size: 0.95rem; font-weight: 500; color: #3a4a5a;
+            cursor: pointer; transition: all 0.15s; text-align: center;
+        }
+        .direction-bar button.active { background: #1e2a3a; border-color: #1e2a3a; color: #fff; }
+        .stations { display: flex; flex-direction: column; gap: 14px; }
+        .station-card {
+            background: #fff; border-radius: 16px; padding: 18px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .station-card.transfer { border-left: 4px solid #f0b429; }
+        .station-header {
+            display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;
+        }
+        .station-name { font-size: 1.1rem; font-weight: 600; }
+        .station-name small { font-size: 0.78rem; font-weight: 400; color: #6a7a8a; margin-left: 6px; }
+        .station-code {
+            font-size: 0.72rem; color: #8a9aaa; background: #f0f3f7;
+            padding: 2px 8px; border-radius: 6px; font-family: "SF Mono", monospace;
+        }
+        .transfer-tag { font-size: 0.7rem; background: #fff3d6; color: #9a6b00; padding: 2px 8px; border-radius: 5px; font-weight: 500; margin-left: 8px; }
+        .line-tag { font-size: 0.68rem; padding: 1px 7px; border-radius: 4px; font-weight: 500; margin-left: 6px; }
+        .line-tml { background: #f5ede6; color: #9a6b3f; }
+        .line-ktl { background: #e6f4ed; color: #2f8f5b; }
+        .train-list { display: flex; flex-direction: column; gap: 8px; }
+        .train-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; background: #f8fafc; border-radius: 10px; font-size: 0.88rem;
+        }
+        .train-left { display: flex; align-items: center; gap: 10px; }
+        .train-dest { font-weight: 500; }
+        .train-plat { font-size: 0.72rem; color: #6a7a8a; background: #e8edf3; padding: 2px 7px; border-radius: 5px; }
+        .train-time { font-weight: 600; font-variant-numeric: tabular-nums; color: #0b6bcb; font-size: 0.95rem; }
+        .train-time.imminent { color: #d9480f; }
+        .empty { color: #8a9aaa; font-size: 0.82rem; padding: 12px 0; text-align: center; }
+        .meta { font-size: 0.72rem; color: #8a9aaa; text-align: center; line-height: 1.6; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="header-text">
+                <h1>柯士甸 ↔ 旺角</h1>
+                <p>屯馬綫 轉 觀塘綫 · 何文田換乘</p>
+            </div>
+            <button class="pill-btn" id="refreshPill" title="點擊立即更新">
+                <span class="pill-dot"></span>
+                <span id="pillText">15秒後更新</span>
+            </button>
+        </header>
+
+        <div class="direction-bar" id="directionBar">
+            <button data-dir="toMOK" class="active">柯士甸 → 旺角</button>
+            <button data-dir="toAUS">旺角 → 柯士甸</button>
+        </div>
+
+        <div class="stations" id="stations"></div>
+
+        <div class="meta">
+            資料來源：港鐵 Next Train API（getSchedule.php）
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const REFRESH_SEC = 15;
+            const API_BASE = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php';
+
+            const ROUTE = {
+                toMOK: [
+                    { code: 'AUS', name: '柯士甸', en: 'Austin', line: 'TML', lineName: '屯馬綫', lineClass: 'line-tml', dirFilter: 'WKS', dirText: '往烏溪沙', transfer: false },
+                    { code: 'HOM', name: '何文田', en: 'Ho Man Tin', line: 'KTL', lineName: '觀塘綫', lineClass: 'line-ktl', dirFilter: 'TIK', dirText: '往調景嶺', transfer: true }
+                ],
+                toAUS: [
+                    { code: 'MOK', name: '旺角', en: 'Mong Kok', line: 'KTL', lineName: '觀塘綫', lineClass: 'line-ktl', dirFilter: 'WHA', dirText: '往黃埔', transfer: false },
+                    { code: 'HOM', name: '何文田', en: 'Ho Man Tin', line: 'TML', lineName: '屯馬綫', lineClass: 'line-tml', dirFilter: 'TUM', dirText: '往屯門', transfer: true }
+                ]
+            };
+
+            let currentDir = 'toMOK';
+            let countdownTimer = null;
+            let refreshTimer = null;
+            let secondsLeft = REFRESH_SEC;
+            let isBusy = false;
+
+            const elStations = document.getElementById('stations');
+            const elPill = document.getElementById('refreshPill');
+            const elPillText = document.getElementById('pillText');
+
+            function minutesUntil(isoStr) {
+                if (!isoStr) return Infinity;
+                const target = new Date(isoStr.replace(' ', 'T') + '+08:00');
+                return isNaN(target.getTime()) ? Infinity : (target - Date.now()) / 60000;
+            }
+
+            function countdownText(isoStr) {
+                const mins = minutesUntil(isoStr);
+                if (!isFinite(mins)) return '—';
+                if (mins <= 0) return '即將到站';
+                if (mins < 1) return '1分鐘內';
+                return Math.floor(mins) + '分鐘';
+            }
+
+            function setPill(state, text) {
+                elPill.classList.remove('busy', 'error');
+                if (state === 'busy') elPill.classList.add('busy');
+                if (state === 'error') elPill.classList.add('error');
+                elPillText.textContent = text;
+            }
+
+            function renderStationCard(station, trains) {
+                const card = document.createElement('div');
+                card.className = 'station-card' + (station.transfer ? ' transfer' : '');
+
+                let listHtml;
+                if (!trains || trains.length === 0) {
+                    listHtml = '<div class="empty">暫無後續列車</div>';
+                } else {
+                    listHtml = trains.slice(0, 3).map(function (t) {
+                        const mins = minutesUntil(t.time);
+                        const imminent = mins <= 2;
+                        return (
+                            '<div class="train-item">' +
+                                '<div class="train-left">' +
+                                    '<span class="train-dest">' + station.dirText + '</span>' +
+                                    (t.plat ? '<span class="train-plat">月台 ' + t.plat + '</span>' : '') +
+                                '</div>' +
+                                '<span class="train-time' + (imminent ? ' imminent' : '') + '">' + countdownText(t.time) + '</span>' +
+                            '</div>'
+                        );
+                    }).join('');
+                }
+
+                card.innerHTML =
+                    '<div class="station-header">' +
+                        '<span class="station-name">' + station.name +
+                            ' <small>' + station.en + '</small>' +
+                            '<span class="line-tag ' + station.lineClass + '">' + station.lineName + '</span>' +
+                            (station.transfer ? '<span class="transfer-tag">換乘</span>' : '') +
+                        '</span>' +
+                        '<span class="station-code">' + station.code + '</span>' +
+                    '</div>' +
+                    '<div class="train-list">' + listHtml + '</div>';
+
+                return card;
+            }
+
+            async function fetchStation(station) {
+                const url = API_BASE + '?line=' + encodeURIComponent(station.line) + '&sta=' + encodeURIComponent(station.code);
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const json = await res.json();
+                if (json.status !== 1) throw new Error(json.message || 'API status=' + json.status);
+
+                const dataKey = station.line + '-' + station.code;
+                const payload = json.data && json.data[dataKey];
+                if (!payload) return [];
+
+                let all = (payload.UP || []).concat(payload.DOWN || []);
+                if (station.dirFilter) {
+                    all = all.filter(function (t) { return t.dest === station.dirFilter; });
+                }
+                return all.sort(function (a, b) {
+                    return new Date(a.time.replace(' ', 'T')) - new Date(b.time.replace(' ', 'T'));
+                });
+            }
+
+            async function refresh() {
+                if (isBusy) return;
+                isBusy = true;
+                stopCountdown();
+
+                const stations = ROUTE[currentDir];
+                setPill('busy', '更新中…');
+
+                const results = await Promise.allSettled(
+                    stations.map(function (s) {
+                        return fetchStation(s).then(function (trains) {
+                            return { station: s, trains: trains };
+                        });
+                    })
+                );
+
+                const fragment = document.createDocumentFragment();
+                let errorMsgs = [];
+
+                results.forEach(function (r, idx) {
+                    if (r.status === 'fulfilled') {
+                        fragment.appendChild(renderStationCard(r.value.station, r.value.trains));
+                    } else {
+                        const s = stations[idx];
+                        errorMsgs.push(s.code + ': ' + (r.reason && r.reason.message || r.reason));
+                        fragment.appendChild(renderStationCard(s, []));
+                    }
+                });
+
+                elStations.innerHTML = '';
+                elStations.appendChild(fragment);
+
+                isBusy = false;
+
+                if (errorMsgs.length > 0) {
+                    setPill('error', '更新失敗 · 再試');
+                    console.warn('更新失敗：', errorMsgs.join(' | '));
+                } else {
+                    startCountdown();
+                }
+            }
+
+            function startCountdown() {
+                secondsLeft = REFRESH_SEC;
+                setPill('', secondsLeft + '秒後更新');
+
+                stopCountdown();
+                countdownTimer = setInterval(function () {
+                    secondsLeft -= 1;
+                    if (secondsLeft <= 0) {
+                        stopCountdown();
+                        refresh();
+                    } else {
+                        setPill('', secondsLeft + '秒後更新');
+                    }
+                }, 1000);
+
+                clearTimeout(refreshTimer);
+                refreshTimer = setTimeout(refresh, REFRESH_SEC * 1000);
+            }
+
+            function stopCountdown() {
+                if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+                if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
+            }
+
+            function switchDirection(dir) {
+                if (dir === currentDir) return;
+                currentDir = dir;
+                document.querySelectorAll('#directionBar button').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-dir') === dir);
+                });
+                stopCountdown();
+                refresh();
+            }
+
+            function init() {
+                document.getElementById('directionBar').addEventListener('click', function (e) {
+                    const btn = e.target.closest('button');
+                    if (btn) switchDirection(btn.getAttribute('data-dir'));
+                });
+
+                elPill.addEventListener('click', function () {
+                    if (!isBusy) refresh();
+                });
+
+                refresh();
+
+                document.addEventListener('visibilitychange', function () {
+                    if (document.hidden) {
+                        stopCountdown();
+                    } else {
+                        refresh();
+                    }
+                });
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
