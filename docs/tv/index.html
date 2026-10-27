@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>-</title>
+<!-- Favicon：Font Awesome Free 6 的 fa-tv（Icons: CC BY 4.0, https://fontawesome.com）
+     白底灰字、正方形畫布；內嵌成 data URI，維持單一檔案、不需要額外請求 -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20640%20640'%3E%3Crect%20width='640'%20height='640'%20rx='110'%20fill='%23ffffff'/%3E%3Cg%20transform='translate(320,320)%20scale(0.78)%20translate(-320,-256)'%3E%3Cpath%20fill='%23666666'%20d='M64%2064l0%20288%20512%200%200-288L64%2064zM0%2064C0%2028.7%2028.7%200%2064%200L576%200c35.3%200%2064%2028.7%2064%2064l0%20288c0%2035.3-28.7%2064-64%2064L64%20416c-35.3%200-64-28.7-64-64L0%2064zM128%20448l384%200c17.7%200%2032%2014.3%2032%2032s-14.3%2032-32%2032l-384%200c-17.7%200-32-14.3-32-32s14.3-32%2032-32z'/%3E%3C/g%3E%3C/svg%3E">
+
+<!-- Bloomberg 播放器用的就是 hls.js，這裡原樣保留 -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- Now 的直播源是 MPEG-DASH（.mpd），沒有 HLS 版本，所以另外需要 dash.js -->
+<script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+
+<style>
+  html, body { margin: 0; background-color: black; overflow: hidden; }
+  body { font-family: -apple-system, "PingFang HK", "Microsoft JhengHei", sans-serif; }
+
+  /* ---- 換台按鈕 ---- */
+  #tabs {
+    position: fixed; top: 12px; left: 12px; z-index: 20;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  #tabs button, #tabs a {
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.35);
+    background: rgba(0,0,0,.55); color: #ddd;
+    font-size: 13px; backdrop-filter: blur(6px);
+    text-decoration: none; line-height: 1.35;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  #tabs button:hover, #tabs a:hover { border-color: #fff; color: #fff; }
+  #tabs button.active { background: #e00; border-color: #e00; color: #fff; font-weight: 600; }
+
+  /* ---- 節目表抽屜（只有 Now 頻道顯示）---- */
+  #epgToggle {
+    position: fixed; top: 12px; right: 12px; z-index: 22;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.35);
+    background: rgba(0,0,0,.55); color: #ddd; font-size: 13px;
+    backdrop-filter: blur(6px);
+  }
+  #epgToggle:hover { border-color: #fff; color: #fff; }
+  #epgPanel {
+    position: fixed; top: 54px; right: 12px; bottom: 12px; width: 320px; z-index: 21;
+    background: rgba(12,12,12,.82); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+    display: flex; flex-direction: column; overflow: hidden;
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  #epgPanel.hidden { transform: translateX(115%); opacity: 0; pointer-events: none; }
+  #epgPanel h2 {
+    margin: 0; padding: 11px 14px; font-size: 13px; font-weight: 600; color: #eee;
+    border-bottom: 1px solid rgba(255,255,255,.12); flex: 0 0 auto;
+  }
+  #epgPanel h2 small { color: #888; font-weight: 400; }
+  #epg { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 auto; }
+  #epg li {
+    display: grid; grid-template-columns: 92px 1fr; gap: 8px;
+    padding: 7px 14px; border-bottom: 1px solid rgba(255,255,255,.06);
+    font-size: 12.5px; line-height: 1.45;
+  }
+  #epg .t { color: #8fa6b8; font-variant-numeric: tabular-nums; }
+  #epg .n { color: #d5d5d5; }
+  #epg li.now { background: rgba(46,125,50,.22); }
+  #epg li.now .n { color: #7ee08a; font-weight: 600; }
+  #epg .badge {
+    font-size: 10px; background: #2e7d32; color: #fff;
+    border-radius: 3px; padding: 1px 4px; margin-left: 6px; vertical-align: 1px;
+  }
+  #epgEmpty { padding: 12px 14px; font-size: 12.5px; color: #999; }
+
+  /* ---- 底部狀態列 ---- */
+  #status {
+    position: fixed; left: 12px; bottom: 10px; right: 12px; z-index: 20;
+    font-size: 11px; color: rgba(255,255,255,.45);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  #status.err { color: #ff8080; }
+
+  /* 全螢幕時把覆蓋層收起來 */
+  video:fullscreen ~ #tabs, video:-webkit-full-screen ~ #tabs { display: none; }
+
+  /* ---- 官方播放器後備（原生 DASH 播不出來時自動接手）---- */
+  #officialWrap {
+    position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 15;
+    background: #000;
+  }
+  #officialWrap.hidden { display: none; }
+  #officialFrame { width: 100%; height: 100%; border: 0; display: block; }
+</style>
+</head>
+
+<body style="background-color:black;">
+  <!-- 影片元素沿用你給的 Bloomberg 播放器寫法 -->
+  <video id="video" class="videoCentered" autoplay="" controls="" muted=""
+         style="position: fixed; height: 100%; width: 100%">
+    <track kind="captions" label="English" srclang="en" src="data:,WEBVTT">
+  </video>
+
+  <div id="tabs"></div>
+  <button id="epgToggle" title="節目表（點擊開啟；閒置 5 秒自動隱藏；H 鍵切換）">節目表</button>
+
+  <!-- 原生 DASH 播不出來時，改用 Now 官方的播放器（news.now.com 無 X-Frame-Options，可嵌入） -->
+  <div id="officialWrap" class="hidden">
+    <iframe id="officialFrame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  </div>
+
+  <aside id="epgPanel" class="hidden">
+    <h2>節目表 <small id="epgChannel"></small></h2>
+    <ul id="epg"><li><span class="t"></span><span class="n">載入中…</span></li></ul>
+  </aside>
+
+  <div id="status">準備中…</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ======================================================================
+     播放器函式庫載入（多重 CDN 備援）
+     <head> 裡的 <script> 是主要來源；若被擋掉或載不到，這裡會依序換別的 CDN。
+     注意：dash.js 只有 cdn.dashjs.org 和 jsdelivr 有；jsdelivr 的 @5 路徑是壞的
+     （404），要用不帶版本的 dist 路徑。
+     ====================================================================== */
+  var LIBS = {
+    hls: [
+      'https://cdn.jsdelivr.net/npm/hls.js@latest',
+      'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.6.15/hls.min.js',
+      'https://unpkg.com/hls.js@latest/dist/hls.min.js'
+    ],
+    dash: [
+      'https://cdn.dashjs.org/latest/dash.all.min.js',
+      'https://cdn.jsdelivr.net/npm/dashjs/dist/dash.all.min.js',
+      'https://cdn.jsdelivr.net/npm/dashjs@4.7.4/dist/dash.all.min.js'
+    ]
+  };
+
+  function loadScript(urls) {
+    return new Promise(function (resolve, reject) {
+      var i = 0;
+      (function next() {
+        if (i >= urls.length) { return reject(new Error('所有 CDN 都失敗')); }
+        var s = document.createElement('script');
+        s.src = urls[i++];
+        s.onload = function () { resolve(s.src); };
+        s.onerror = next;                 // 換下一個 CDN
+        document.head.appendChild(s);
+      })();
+    });
+  }
+
+  /* ======================================================================
+     頻道表
+       - type 'hls'  → 走 Bloomberg 那套 hls.js 播放器
+       - type 'dash' → Now 的直播只有 DASH，必須用 dash.js（API 換 token）
+     ====================================================================== */
+  var CHANNELS = [
+    // now:true = 走 webtvapi（格式由 API 依 UA 決定：桌面 DASH、行動裝置 HLS）
+    { key: '332',       label: '332 新聞台', now: true, epg: '332',
+      official: 'https://news.now.com/home/live' },
+    { key: '331',       label: '331 直播台', now: true, epg: '331',
+      official: 'https://news.now.com/home/live331a' },
+    { key: 'bloomberg', label: 'Bloomberg',  now: false, epg: null,
+      src: 'https://liveprodusphoenixeast.global.ssl.fastly.net/USPhx-HD/Channel-TX-USPhx-AWS-virginia-1/Source-USPhx-16k-1-s6lk2-BP-07-02-81ykIWnsMsg_live.m3u8' }
+  ];
+
+  // 只能外連、無法內嵌的頻道。
+  // TVB 無綫新聞台（83）三層都擋：API 完全沒有 CORS 標頭、AES-128 金鑰的
+  // Access-Control-Allow-Origin 只允許 *.tvb.com、網頁本身又是 X-Frame-Options: DENY
+  // 加 CSP frame-ancestors 'none'（連 iframe 都不行）。所以只能開官方網站。
+  // Viu 更硬：內容是 DRM 保護（enableDRM:true + FairPlay/Widevine 授權伺服器），
+  // API 還回 GEO_CHECK_FAIL（地區限制），網頁也是 X-Frame-Options: SAMEORIGIN。
+  var EXTERNAL_LINKS = [
+    { label: 'TVB 新聞台 ↗', url: 'https://news.tvb.com/tc/live/C',
+      title: '無綫新聞台（83 台）—— TVB 禁止外部播放與嵌入，點此開官方網站' },
+    { label: 'Viu 新聞重溫 ↗', url: 'https://viu.tv/encore/news',
+      title: 'ViuTV《新聞報道》重溫（VOD，非直播）—— 內容受 DRM 保護且有限區，只能開官方網站' }
+  ];
+
+  // Now 直播位址 API（news.now.com/home/live 播放器實際使用）
+  var LIVE_API = 'https://webtvapi.now.com/10/7/getLiveURL';
+  // 節目表 API（有 CORS: *，可直接跨域抓，不需要代理）
+  var EPG_API  = 'https://d2lsyikud1zuci.cloudfront.net/pccw-news-api/api/getChannelEPG';
+
+  // 節目表自動隱藏：閒置幾毫秒後收起（設 0 = 不自動隱藏，一直開著）
+  var EPG_AUTOHIDE_MS = 5000;
+  // dash.js 連續錯誤時最多重取幾次（避免無限迴圈）
+  var DASH_MAX_RETRY = 5;
+  // 連續失敗幾次就放棄原生、改用官方播放器（每輪含 watchdog 約 10~15 秒）
+  var FALLBACK_AFTER_RETRY = 2;
+  // 打 API 的逾時：超過就當失敗，不能讓狀態列永遠停在「正在取得位址」
+  var API_TIMEOUT_MS = 12000;
+  // 卡死偵測：每 WATCHDOG_MS 檢查一次 currentTime，超過 STALL_MS 沒動就重取
+  var WATCHDOG_MS = 3000;
+  var STALL_MS    = 10000;
+
+  var video    = document.getElementById('video');
+  var tabsEl   = document.getElementById('tabs');
+  var statusEl = document.getElementById('status');
+  var panel    = document.getElementById('epgPanel');
+  var epgList  = document.getElementById('epg');
+  var epgChan  = document.getElementById('epgChannel');
+  var epgBtn   = document.getElementById('epgToggle');
+  var offWrap  = document.getElementById('officialWrap');
+  var offFrame = document.getElementById('officialFrame');
+  var offBtn   = null;   // 原生/官方 切換鈕，稍後在 UI 初始化時建立
+
+  var hlsPlayer  = null;   // Bloomberg 路徑
+  var dashPlayer = null;   // Now 路徑
+  var current    = null;
+  var tokenTimer = null;
+  var epgTimer   = null;
+  var epgHideTimer = null;
+  var epgHover   = false;   // 鼠標是否停在節目表上
+  var retryCount  = 0;       // dash.js 連續錯誤次數
+  var watchTimer = null;    // 卡死偵測的 interval
+  var watchLastCt = -1;
+  var watchLastMove = 0;
+  var watchHealthyMs = 0;
+  var lastStreamError = '';   // 最近一次 dash.js 錯誤，出問題時顯示出來
+
+  function say(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.className = isErr ? 'err' : '';
+  }
+
+  /* ---------------------- 播放器：Bloomberg / hls.js ---------------------- */
+  // 這段刻意跟你提供的 Bloomberg 播放器一致
+  function playHls(src) {
+    if (typeof Hls === 'undefined') {
+      say('hls.js 沒有載入成功，Bloomberg 無法播放（CDN 被擋？）', true);
+      return;
+    }
+    if (Hls.isSupported()) {
+      hlsPlayer = new Hls();
+      hlsPlayer.loadSource(src);
+      hlsPlayer.attachMedia(video);
+      hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function () {
+        video.play();
+      });
+      hlsPlayer.on(Hls.Events.ERROR, function (evt, data) {   // 直播斷線自動重試
+        if (data && data.fatal) {
+          say('HLS 中斷（' + data.type + '），重試中…', true);
+          setTimeout(function () {
+            if (current && !current.now) { stopAll(); playHls(src); }
+          }, 2000);
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {   // Safari 原生 HLS
+      video.src = src;
+      video.addEventListener('loadedmetadata', function () { video.play(); });
+    } else {
+      say('這個瀏覽器不支援 HLS 播放。', true);
+    }
+  }
+
+  /* ---------------------- 播放器：Now / DASH ---------------------- */
+  function refNo() {
+    var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+              + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  // 用 XMLHttpRequest 而不是 fetch。
+  // 官方網頁（news.now.com）也是用 XHR（jQuery $.ajax）打這支 API，而它在 Safari 正常；
+  // 之前用 fetch 在 Safari 會一直 pending（不 resolve 也不 reject），狀態列就永遠停在「正在取得位址」。
+  function getNowStreamUrl(contentId) {
+    var body = {
+      contentId: contentId, contentType: 'Channel',
+      deviceId: 'WEB', deviceType: 'web', secureCookie: '',
+      callerReferenceNo: refNo(), profileId: ''
+    };
+    if (contentId === '332') { body.audioCode = 'N'; }   // 官方頁面對 332 多帶這個
+
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', LIVE_API, true);
+      xhr.timeout = API_TIMEOUT_MS;                       // 逾時就當失敗，不要吊死
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function () {
+        var data;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch (e) {
+          return reject(new Error('回應不是 JSON（HTTP ' + xhr.status + '）'));
+        }
+        if (data.responseCode !== 'SUCCESS' || !data.asset || !data.asset.length) {
+          return reject(new Error('API：' + (data.responseCode || 'UNKNOWN')
+            + (data.responseCode === 'NOT_LOGIN' ? '（需登入）' : '')));
+        }
+        resolve(data.asset[0]);
+      };
+      xhr.onerror   = function () { reject(new Error('網路錯誤或被 CORS 擋住（HTTP ' + xhr.status + '）')); };
+      xhr.ontimeout = function () { reject(new Error('API 逾時 ' + (API_TIMEOUT_MS / 1000) + ' 秒')); };
+      xhr.onabort   = function () { reject(new Error('請求被中止')); };
+
+      try {
+        xhr.send(JSON.stringify(body));
+      } catch (e) {
+        reject(new Error('送出請求失敗：' + e.message));
+      }
+    });
+  }
+
+  /* ---------------------- 播放 Now 頻道 ----------------------
+     ★ 關鍵：webtvapi 會「看 User-Agent 決定回哪種格式」
+         桌面 Chrome UA    → DASH（.mpd）   給 dash.js + MSE
+         iPhone/Android UA → HLS（.m3u8）   給 hls.js；iOS Safari 用原生 HLS（不需 MSE）
+     所以不能寫死用 dash.js —— 之前在 iOS 上就是把 API 回的 HLS 網址餵給
+     dash.js，必定失敗，才會一直退到官方播放器。現在改成看副檔名分派。 */
+  function playNow(contentId, attempt) {
+    attempt = attempt || 0;
+    say('正在取得 ' + contentId + ' 台的串流位址…（第 ' + (attempt + 1) + ' 次）');
+
+    getNowStreamUrl(contentId).then(function (url) {
+      if (!current || current.key !== contentId) { return; }   // 已經切走了
+
+      var isHls = /\.m3u8(\?|$)/i.test(url);
+      console.log('[stream]', contentId, isHls ? 'HLS' : 'DASH', url);
+      say(contentId + ' 播放中（' + (isHls ? 'HLS' : 'DASH') + '）：' + url);
+
+      if (isHls) {
+        playHlsSource(url);
+      } else {
+        playDashSource(url);
+      }
+      startWatchdog(contentId);
+      scheduleTokenRefresh(url, contentId);
+    }).catch(function (err) {
+      if (!current || current.key !== contentId) { return; }
+      console.error('[stream api error]', err);
+      if (attempt < 1) {                                  // 先重試一次
+        say('取得串流失敗（' + err.message + '），重試一次…', true);
+        setTimeout(function () {
+          if (current && current.key === contentId) { playNow(contentId, attempt + 1); }
+        }, 2000);
+        return;
+      }
+      // 連 API 都拿不到，就別再等原生播放器了
+      if (current.official) {
+        showOfficial('串流位址 API 失敗：' + err.message);
+        return;
+      }
+      say('取得串流失敗：' + err.message, true);
+    });
+  }
+
+  // HLS：能用 hls.js 就用（Chrome/Android），Safari 走原生（iOS Safari 沒有 MSE）
+  function playHlsSource(url) {
+    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+      hlsPlayer = new Hls({ liveDurationInfinity: true });
+      hlsPlayer.loadSource(url);
+      hlsPlayer.attachMedia(video);
+      hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function () { video.play(); });
+      hlsPlayer.on(Hls.Events.ERROR, function (evt, data) {
+        if (!data || !data.fatal) { return; }             // 非致命的自己會恢復
+        lastStreamError = 'hls.js ' + data.type + '/' + data.details;
+        console.error('[hls.js error]', data);
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url;                                    // 原生 HLS（Safari）
+      video.addEventListener('loadedmetadata', function () { video.play(); });
+    } else {
+      say('這個瀏覽器不支援 HLS 播放。', true);
+    }
+  }
+
+  // DASH：只有桌面 Chrome 會走到這裡
+  function playDashSource(url) {
+    if (typeof dashjs === 'undefined' || typeof window.MediaSource === 'undefined') {
+      if (current && current.official) {
+        showOfficial('這個瀏覽器無法播 DASH（缺 dash.js 或 MediaSource）');
+      } else {
+        say('這個瀏覽器不支援 DASH 播放。', true);
+      }
+      return;
+    }
+
+    var ev = dashjs.MediaPlayer.events;
+    dashPlayer = dashjs.MediaPlayer().create();
+    dashPlayer.updateSettings({ streaming: { abr: { initialBitrate: { video: 1680 } } } });
+
+    // 先把事件掛好再 initialize，免得漏掉初始化早期的錯誤
+    dashPlayer.on(ev.PLAYBACK_PLAYING, function () { /* 狀態列已顯示播放中 */ });
+
+    // 重點：dash.js 對很多錯誤（例如 MEDIA_ERR_DECODE）會自己重置 MediaSource 並恢復，
+    // 這些是「非致命」的。以前這裡一收到 ERROR 就把播放器整組打掉重來，結果明明在播
+    // 也被自己殺掉，然後無限迴圈。現在只記錄，真的卡死交給 watchdog 判斷。
+    dashPlayer.on(ev.ERROR, function (e) {
+      if (!current || !current.now) { return; }
+      var err = (e && e.error) || {};
+      lastStreamError = 'code=' + (err.code !== undefined ? err.code : '?')
+                    + (err.message ? ' / ' + err.message : '');
+      console.error('[dash.js error]', e);
+    });
+
+    dashPlayer.initialize(video, url, true);
+  }
+
+  /* ---------------------- 卡死偵測（watchdog） ----------------------
+     不再信任 dash.js 的 ERROR 事件，改成直接看 currentTime 有沒有在前進：
+     連續 STALL_MS 毫秒沒動、而且不是使用者自己按暫停，才真的重取位址。 */
+  function startWatchdog(contentId) {
+    stopWatchdog();
+    watchLastCt = -1;
+    watchLastMove = Date.now();
+    watchHealthyMs = 0;
+    watchTimer = setInterval(function () {
+      if (!current || current.key !== contentId || !current.now) { return; }
+
+      var ct = video.currentTime;
+      if (ct !== watchLastCt) {                    // 有在前進 → 健康
+        watchLastCt = ct;
+        watchLastMove = Date.now();
+        watchHealthyMs += WATCHDOG_MS;
+        if (watchHealthyMs > 30000) { retryCount = 0; }   // 穩定播 30 秒才重置重試次數
+        return;
+      }
+      if (video.paused) { watchLastMove = Date.now(); return; }   // 使用者自己按的暫停
+
+      if (Date.now() - watchLastMove > STALL_MS) {
+        watchLastMove = Date.now();
+        restartStream('畫面卡住 ' + Math.round(STALL_MS / 1000) + ' 秒沒動');
+      }
+    }, WATCHDOG_MS);
+  }
+
+  function stopWatchdog() {
+    if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
+  }
+
+  function restartStream(reason) {
+    if (!current || !current.now) { return; }
+
+    // 原生播放器連續失敗幾次就別再等了，直接換官方播放器（每輪約 10~15 秒）
+    if (current.official && retryCount >= FALLBACK_AFTER_RETRY) {
+      showOfficial('原生 dash.js 連續失敗 ' + (retryCount + 1) + ' 次：' + reason);
+      return;
+    }
+    if (retryCount >= DASH_MAX_RETRY) {
+      say('Now 頻道連續失敗 ' + (retryCount + 1) + ' 次，已停止重試。原因：' + reason, true);
+      return;
+    }
+    retryCount++;
+    watchHealthyMs = 0;
+    say('重新取得位址（第 ' + retryCount + '/' + DASH_MAX_RETRY + ' 次）：' + reason, true);
+
+    var id = current.key;
+    stopAll();
+    setTimeout(function () {
+      if (current && current.key === id) { playNow(id); }
+    }, 800 * retryCount);
+  }
+
+  /* ---------------------- 官方播放器後備 ----------------------
+     Now 的 manifest 時間軸異常（availabilityStartTime 在 2025-09、segment 時間戳高達 3.4e7 秒），
+     dash.js 會卡在直播邊緣反覆解碼失敗；官方用的 Bitmovin 沒這個問題。
+     新聞台頁面沒有 X-Frame-Options / CSP frame-ancestors，所以可以直接 iframe 進來。 */
+  function showOfficial(why) {
+    if (!current || !current.official) { return; }
+    stopAll();
+    offFrame.src = current.official;
+    offWrap.classList.remove('hidden');
+    offBtn.textContent = '回原生播放器';
+    offBtn.style.display = '';
+    say('已改用 Now 官方播放器（' + why + '）。按「回原生播放器」可再試一次原生。', true);
+  }
+
+  function hideOfficial() {
+    offFrame.src = 'about:blank';
+    offWrap.classList.add('hidden');
+    if (offBtn) { offBtn.textContent = '官方播放器'; }
+  }
+
+  // token 尾碼是到期 Unix 秒數（約 4 小時），提前 5 分鐘換新的
+  function scheduleTokenRefresh(url, contentId) {
+    clearTimeout(tokenTimer);
+    var m = /_(\d{10,})$/.exec(url);
+    if (!m) { return; }
+    var ms = Number(m[1]) * 1000 - Date.now() - 5 * 60 * 1000;
+    tokenTimer = setTimeout(function () {
+      if (current && current.key === contentId) { stopAll(); playNow(contentId); }
+    }, ms < 1000 ? 1000 : ms);
+  }
+
+  /* ---------------------- 播放器切換 ---------------------- */
+  function stopAll() {
+    clearTimeout(tokenTimer);
+    stopWatchdog();
+    if (hlsPlayer) { try { hlsPlayer.destroy(); } catch (e) {} hlsPlayer = null; }
+    if (dashPlayer) { try { dashPlayer.reset(); } catch (e) {} dashPlayer = null; }
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    } catch (e) {}
+  }
+
+  /* ---------------------- 節目表（僅 Now 頻道） ---------------------- */
+  function hhmm(ms) {
+    return new Date(ms).toLocaleTimeString('zh-HK', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Hong_Kong'
+    });
+  }
+
+  // 通用 JSON GET（一樣走 XHR，避免 Safari 的 fetch 卡住）
+  function getJSON(url, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = timeoutMs || API_TIMEOUT_MS;
+      xhr.onload = function () {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch (e) { reject(new Error('回應不是 JSON（HTTP ' + xhr.status + '）')); }
+      };
+      xhr.onerror   = function () { reject(new Error('網路錯誤或被 CORS 擋住')); };
+      xhr.ontimeout = function () { reject(new Error('請求逾時')); };
+      xhr.send();
+    });
+  }
+
+  function loadEPG(channelId) {
+    clearTimeout(epgTimer);
+    getJSON(EPG_API + '?channelId=' + encodeURIComponent(channelId) + '&hour=24')
+      .then(function (data) {
+        if (!current || current.epg !== channelId) { return; }
+        var progs = data.channelPrograms || [];
+        epgChan.textContent = '（' + (data.chineseTitle || channelId) + '）';
+        epgList.innerHTML = '';
+
+        if (!progs.length) {
+          epgList.innerHTML = '<div id="epgEmpty">暫無節目資料</div>';
+        } else {
+          var now = Date.now();
+          progs.forEach(function (p) {
+            var li = document.createElement('li');
+            var isNow = now >= p.startTime && now < p.endTime;
+            if (isNow) { li.className = 'now'; }
+
+            var t = document.createElement('span');
+            t.className = 't';
+            t.textContent = hhmm(p.startTime) + '–' + hhmm(p.endTime);
+
+            var n = document.createElement('span');
+            n.className = 'n';
+            n.textContent = p.chineseTitle || p.englishTitle || '';
+            if (isNow) {
+              var b = document.createElement('span');
+              b.className = 'badge';
+              b.textContent = '播放中';
+              n.appendChild(b);
+            }
+
+            li.appendChild(t); li.appendChild(n);
+            epgList.appendChild(li);
+            if (isNow) { setTimeout(function () { li.scrollIntoView({ block: 'center' }); }, 0); }
+          });
+        }
+        // 每 60 秒重新同步「播放中」標記與當前節目
+        epgTimer = setTimeout(function () { loadEPG(channelId); }, 60000);
+      })
+      .catch(function (err) {
+        epgList.innerHTML = '';
+        var d = document.createElement('div');
+        d.id = 'epgEmpty';
+        d.textContent = '節目表載入失敗：' + err.message;
+        epgList.appendChild(d);
+      });
+  }
+
+  /* ---------------------- 節目表自動隱藏 ---------------------- */
+  function showEPGPanel() {
+    if (!current || !current.epg) { return; }   // Bloomberg 沒有節目表
+    panel.classList.remove('hidden');
+    scheduleEpgHide();
+  }
+
+  function hideEPGPanel() {
+    clearTimeout(epgHideTimer);
+    panel.classList.add('hidden');
+  }
+
+  function toggleEPGPanel() {
+    if (panel.classList.contains('hidden')) { showEPGPanel(); } else { hideEPGPanel(); }
+  }
+
+  function scheduleEpgHide() {
+    clearTimeout(epgHideTimer);
+    if (!EPG_AUTOHIDE_MS) { return; }
+    epgHideTimer = setTimeout(function () {
+      if (epgHover) { scheduleEpgHide(); return; }   // 還在看就再等一輪
+      hideEPGPanel();
+    }, EPG_AUTOHIDE_MS);
+  }
+
+  /* ---------------------- 換台 ---------------------- */
+  function switchTo(key) {
+    var ch = null;
+    for (var i = 0; i < CHANNELS.length; i++) {
+      if (CHANNELS[i].key === key) { ch = CHANNELS[i]; }
+    }
+    if (!ch) { return; }
+
+    current = ch;
+    stopAll();
+    hideOfficial();
+    clearTimeout(epgTimer);
+    clearTimeout(epgHideTimer);
+    epgHover = false;
+    retryCount = 0;
+    lastStreamError = '';
+    if (offBtn) { offBtn.style.display = ch.official ? '' : 'none'; }
+
+    Array.prototype.forEach.call(tabsEl.children, function (b) {
+      b.classList.toggle('active', b.dataset.key === key);
+    });
+
+    if (ch.epg) {
+      epgBtn.style.display = '';
+      epgChan.textContent = '';
+      epgList.innerHTML = '<li><span class="t"></span><span class="n">載入中…</span></li>';
+      loadEPG(ch.epg);         // 先預載，之後點開就有資料
+      hideEPGPanel();          // 預設不顯示，要手動點「節目表」才打開
+    } else {
+      // Bloomberg 不需要節目表
+      hideEPGPanel();
+      epgBtn.style.display = 'none';
+    }
+
+    if (ch.now) {
+      playNow(ch.key);            // 格式（DASH/HLS）由 API 依 UA 決定
+    } else {
+      say(ch.label + ' 播放中（hls.js）');
+      playHls(ch.src);
+    }
+  }
+
+  /* ---------------------- 初始化 UI ---------------------- */
+  CHANNELS.forEach(function (ch, idx) {
+    var b = document.createElement('button');
+    b.textContent = ch.label;
+    b.dataset.key = ch.key;
+    b.title = '快捷鍵 ' + (idx + 1);
+    b.addEventListener('click', function () { switchTo(ch.key); });
+    tabsEl.appendChild(b);
+  });
+
+  // 外連頻道（例如 TVB）：不進播放流程，單純另開分頁
+  EXTERNAL_LINKS.forEach(function (l) {
+    var b = document.createElement('button');
+    b.textContent = l.label;
+    b.title = l.title;
+    b.addEventListener('click', function () {
+      window.open(l.url, '_blank', 'noopener');
+    });
+    tabsEl.appendChild(b);
+  });
+
+  // 原生 ↔ 官方播放器 手動切換鈕
+  (function () {
+    offBtn = document.createElement('button');
+    offBtn.textContent = '官方播放器';
+    offBtn.title = '改用 Now 官方播放器（原生 dash.js 播不出來時的後備）';
+    offBtn.style.display = 'none';           // 只有 Now 頻道才顯示
+    offBtn.addEventListener('click', function () {
+      if (offWrap.classList.contains('hidden')) {
+        showOfficial('手動切換');
+      } else {
+        hideOfficial();
+        if (current) { switchTo(current.key); }
+      }
+    });
+    tabsEl.appendChild(offBtn);
+  })();
+
+  // 只靠手動點擊開關（不自動彈出）；打開後閒置會自動收起
+  epgBtn.addEventListener('click', function () { toggleEPGPanel(); });
+
+  // 鼠標停在面板上時不倒數
+  panel.addEventListener('mouseenter', function () { epgHover = true; clearTimeout(epgHideTimer); });
+  panel.addEventListener('mouseleave', function () { epgHover = false; scheduleEpgHide(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { return; }
+    var n = parseInt(e.key, 10);
+    if (n >= 1 && n <= CHANNELS.length) { switchTo(CHANNELS[n - 1].key); }
+    if (e.key === 'h' || e.key === 'H') { toggleEPGPanel(); }
+  });
+
+  /* ---------------------- 啟動：先確保函式庫到位 ---------------------- */
+  say('正在載入播放器函式庫…');
+  Promise.all([
+    (typeof Hls    !== 'undefined') ? Promise.resolve('hls: 已載入')  : loadScript(LIBS.hls),
+    (typeof dashjs !== 'undefined') ? Promise.resolve('dash: 已載入') : loadScript(LIBS.dash)
+  ]).then(function (r) {
+    console.log('[libs]', r.join(' | '), '| Hls =', typeof Hls, '| dashjs =', typeof dashjs);
+    switchTo('332');   // 預設 332 新聞台
+  }).catch(function (err) {
+    say('播放器函式庫全部載入失敗：' + err.message +
+        ' —— hls.js / dash.js 的 CDN 可能被網路擋住，兩個頻道都無法播放。', true);
+  });
+})();
+</script>
+</body>
+</html>
