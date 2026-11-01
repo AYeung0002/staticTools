@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -254,9 +255,11 @@
             
             const MTR_API_BASE = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php';
             const CTB_ETA_BASE = 'https://rt.data.gov.hk/v2/transport/citybus/eta';
+            const CTB_ROUTE_STOP_BASE = 'https://rt.data.gov.hk/v2/transport/citybus/route-stop';
+            const CTB_STOP_BASE = 'https://rt.data.gov.hk/v2/transport/citybus/stop';
             
-            const AUSTIN_CTB_STOP_ID = '003897';
             const A22_ROUTE = 'A22';
+            let a22AustinStopId = null; // 動態緩存正確的站點 ID
 
             const ROUTE = {
                 toMOK: [
@@ -274,7 +277,6 @@
             let refreshTimer = null;
             let secondsLeft = 0;
             let isBusy = false;
-            let currentRefreshSec = MTR_REFRESH_SEC;
 
             const elStations = document.getElementById('stations');
             const elPill = document.getElementById('refreshPill');
@@ -284,8 +286,10 @@
             /* ---------- 核心時間處理，強制 HKT ---------- */
             function parseHKT(isoStr) {
                 if (!isoStr) return null;
-                let str = isoStr.replace(' ', 'T');
-                if (!str.includes('+') && !str.endsWith('Z')) str += '+08:00';
+                let str = isoStr.trim();
+                if (!str.includes('+') && !str.endsWith('Z')) {
+                    str = str.replace(' ', 'T') + '+08:00';
+                }
                 const d = new Date(str);
                 return isNaN(d.getTime()) ? null : d;
             }
@@ -413,16 +417,41 @@
                 }
             }
 
-            /* ---------- A22 巴士渲染與獲取 ---------- */
+            /* ---------- A22 巴士動態站點獲取與渲染 ---------- */
+            async function findAustinStopId() {
+                if (a22AustinStopId) return a22AustinStopId;
+                
+                // 修正：改回 inbound，並加入 cache: 'no-store'
+                const res = await fetch(CTB_ROUTE_STOP_BASE + '/CTB/' + A22_ROUTE + '/inbound', { cache: 'no-store' });
+                const data = await res.json();
+                if (!data.data) throw new Error('無法取得 A22 站點列表');
+
+                // 限制前 20 個站點以加快搜尋
+                for (let i = 0; i < Math.min(20, data.data.length); i++) {
+                    const stopId = data.data[i].stop;
+                    const stopRes = await fetch(CTB_STOP_BASE + '/' + stopId, { cache: 'no-store' });
+                    const stopInfo = await stopRes.json();
+                    
+                    // 修正：同時相容「柯士甸」與「佐敦」
+                    if (stopInfo.data && (stopInfo.data.name_tc.includes('柯士甸') || stopInfo.data.name_tc.includes('佐敦'))) {
+                        a22AustinStopId = stopId;
+                        return a22AustinStopId;
+                    }
+                }
+                throw new Error('在 A22 路線上找不到柯士甸/佐敦站');
+            }
+
             async function fetchA22Eta() {
-                const url = CTB_ETA_BASE + '/CTB/' + AUSTIN_CTB_STOP_ID + '/' + A22_ROUTE;
+                const stopId = await findAustinStopId();
+                const url = CTB_ETA_BASE + '/CTB/' + stopId + '/' + A22_ROUTE;
                 const res = await fetch(url, { cache: 'no-store' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const json = await res.json();
                 if (!json.data || !Array.isArray(json.data)) return [];
                 
                 return json.data
-                    .filter(function (item) { return item.eta; })
+                    // 修正：過濾條件改為 dir === 'I' (Inbound 往藍田)
+                    .filter(function (item) { return item.eta && item.dir === 'I'; })
                     .sort(function (a, b) {
                         const tA = parseHKT(a.eta);
                         const tB = parseHKT(b.eta);
@@ -459,7 +488,7 @@
                         '<span class="station-name">柯士甸站 <small>Austin Station</small>' +
                             '<span class="line-tag" style="background:var(--bus-bg);color:var(--bus-text);">A22</span>' +
                         '</span>' +
-                        '<span class="station-code">' + AUSTIN_CTB_STOP_ID + '</span>' +
+                        '<span class="station-code">' + (a22AustinStopId || '...') + '</span>' +
                     '</div>' +
                     '<div class="train-list">' + listHtml + '</div>';
                 return card;
@@ -489,7 +518,6 @@
 
             /* ---------- 倒計時控制 ---------- */
             function startCountdown(duration) {
-                currentRefreshSec = duration;
                 secondsLeft = duration;
                 setPill('', secondsLeft + '秒後更新');
                 
@@ -546,10 +574,8 @@
                     if (!isBusy) executeRefresh();
                 });
 
-                // 初始載入
                 executeRefresh();
 
-                // 頁面可見性變化時處理
                 document.addEventListener('visibilitychange', function () {
                     if (document.hidden) {
                         stopCountdown();

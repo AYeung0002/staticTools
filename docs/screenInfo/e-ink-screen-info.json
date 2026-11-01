@@ -1,0 +1,22 @@
+{
+  "title": "E-ink 屏幕详细参数",
+  "data": {
+    "视口宽 innerWidth": "840px",
+    "视口高 innerHeight": "548px",
+    "物理宽 screen.width": "840px",
+    "物理高 screen.height": "632px",
+    "可用宽 availWidth": "840px",
+    "可用高 availHeight": "632px",
+    "像素比 devicePixelRatio": 2.00,
+    "色彩深度 colorDepth": "24 bit",
+    "像素深度 pixelDepth": "24 bit",
+    "单色 monochrome:1": "否",
+    "粗指针 pointer:coarse": "是",
+    "慢刷新 update:slow": "否",
+    "分辨率 1dppx": "否",
+    "综合判断 E-ink": "✕ 可能不是",
+    "屏幕方向": "landscape-secondary",
+    "平台 platform": "Linux armv8l",
+    "User Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.136 Safari/537.36"
+  }
+}
