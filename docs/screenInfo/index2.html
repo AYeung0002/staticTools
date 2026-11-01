@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ink 屏幕信息检测</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #fff; color: #000; line-height: 1.8; }
+        .info-block { border: 1px solid #000; padding: 15px; margin-bottom: 15px; }
+        .label { font-weight: bold; display: inline-block; min-width: 200px; }
+        .value { background: #eee; padding: 2px 8px; border-radius: 3px; }
+        .warn { color: #d00; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>E-ink 屏幕详细参数</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        const results = [];
+        function log(label, value, isWarn = false) {
+            const cls = isWarn ? 'value warn' : 'value';
+            results.push(`<div class="info-block"><span class="label">${label}:</span><span class="${cls}">${value}</span></div>`);
+        }
+
+        // --- 1. 基础分辨率信息 ---
+        log('CSS 视口宽度 (vw)', window.innerWidth + 'px');
+        log('CSS 视口高度 (vh)', window.innerHeight + 'px');
+        log('屏幕物理像素宽度 (screen.width)', screen.width + 'px');
+        log('屏幕物理像素高度 (screen.height)', screen.height + 'px');
+        log('可用屏幕宽度 (availWidth)', screen.availWidth + 'px');
+        log('可用屏幕高度 (availHeight)', screen.availHeight + 'px');
+
+        // --- 2. 像素比 (关键!) ---
+        const dpr = window.devicePixelRatio || 1;
+        log('设备像素比 (devicePixelRatio)', dpr.toFixed(2) + ' (CSS 1px = ' + dpr + ' 物理像素)');
+
+        // --- 3. 色彩与像素深度 ---
+        log('色彩深度 (colorDepth)', screen.colorDepth + ' bit');
+        log('像素深度 (pixelDepth)', screen.pixelDepth + ' bit');
+        // 墨水屏常见报告为 16 bit (灰阶) 或更低，而普通 LCD/OLED 通常为 24 或 32 bit[reference:0]
+
+        // --- 4. 通过 CSS 媒体查询探测 E-ink 特性 ---
+        // 参考：E-ink 设备通常具有 monochrome、粗指针和极慢刷新率[reference:1]
+        const mqMonochrome = window.matchMedia('(monochrome: 1)').matches;
+        const mqCoarse = window.matchMedia('(pointer: coarse)').matches;
+        const mqUpdateSlow = window.matchMedia('(update: slow)').matches;
+        const mqResolution1dppx = window.matchMedia('(resolution: 1dppx)').matches;
+
+        log('媒体查询 (monochrome: 1)', mqMonochrome);
+        log('媒体查询 (pointer: coarse)', mqCoarse);
+        log('媒体查询 (update: slow)', mqUpdateSlow);
+        log('媒体查询 (resolution: 1dppx)', mqResolution1dppx);
+
+        const isLikelyEink = mqMonochrome && mqCoarse && mqUpdateSlow;
+        log('综合判断 (是否极可能为 E-ink)', isLikelyEink ? '✅ 是' : '❌ 否', true);
+
+        // --- 5. 其他环境信息 ---
+        log('User Agent', navigator.userAgent);
+        log('平台 (platform)', navigator.platform);
+        log('屏幕方向', (screen.orientation && screen.orientation.type) || '未知');
+
+        output.innerHTML = results.join('');
+    </script>
+</body>
+</html>
