@@ -91,10 +91,10 @@
                 </div>
             </div>
 
-            <!-- ② 當前天氣區域 (合併溫度，釋放垂直空間) -->
-            <div class="flex justify-between items-start w-full mt-1 flex-none">
+            <!-- ② 當前天氣區域 (右側全版預留給預報敘述，不顯示位置，高度嚴格受控防止溢出) -->
+            <div class="flex justify-between items-center w-full mt-1 flex-none min-h-[105px] max-h-[110px]">
                 <!-- 左半部：大圖示 + 主溫度 + 最高低溫 (整合在一起) -->
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-none">
                     <i id="main-icon" class="ph-fill ph-sun text-[5.8rem] text-black leading-none flex-none"></i>
                     <div class="flex flex-col justify-center">
                         <div id="temp-display" class="text-[5.5rem] font-black leading-[0.85] tabular-nums tracking-tighter text-black">--°</div>
@@ -102,15 +102,9 @@
                     </div>
                 </div>
 
-                <!-- 右半部：地點按鈕 + 兩行天氣敘述 -->
-                <div class="flex flex-col items-end pt-1 max-w-[13.5rem]">
-                    <button id="station-toggle-btn" aria-label="切換觀測站點" class="border-2 eink-border rounded-full px-3 py-1 flex items-center gap-1 text-lg font-bold bg-white active:bg-black active:text-white whitespace-nowrap">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <span id="station-name">油麻地</span>
-                        <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                    </button>
-                    <!-- 兩行天氣敘述 -->
-                    <div id="weather-desc" class="text-xl font-black text-right mt-3 leading-snug text-black">
+                <!-- 右半部：純天氣敘述 (去除按鈕，垂直置中，最大高度防溢出保護) -->
+                <div class="flex-1 flex flex-col justify-center items-end pl-4 max-h-[108px] overflow-hidden">
+                    <div id="weather-desc" class="text-xl font-black text-right leading-snug text-black">
                         載入中...
                     </div>
                 </div>
@@ -243,15 +237,6 @@
             }
         }
 
-        // 站點配置 (天文台總部位於尖沙咀彌敦道134A號，京士柏站位於油麻地旁，地理對應準確)
-        const STATIONS = [
-            { label: '油麻地', keys: ['京士柏', '香港天文台'] },
-            { label: '尖沙咀', keys: ['香港天文台', '九龍城'] }
-        ];
-
-        // 驗證 localStorage 資料，防止髒資料導致 STATIONS[index] 越界拋錯
-        const savedStation = parseInt(localStorage.getItem('eink_station_pref') || '0', 10);
-        let currentStationIndex = Number.isInteger(savedStation) && savedStation >= 0 && savedStation < STATIONS.length ? savedStation : 0;
         let cachedRhrData = null;
 
         /* ================= 輔助工具：安全多行文字插入 (限制最大行數，避免佈局溢出) ================= */
@@ -322,23 +307,45 @@
             if (!LUNAR_FMT) return '';
             try {
                 const parts = LUNAR_FMT.formatToParts(d);
-                let m = '', dayVal = '';
+                let mVal = '', dayVal = '';
                 for (const p of parts) {
-                    if (p.type === 'month') m = p.value;
+                    if (p.type === 'month') mVal = p.value;
                     if (p.type === 'day') dayVal = p.value;
                 }
-                if (m && dayVal) {
-                    if (!m.includes('月')) m += '月';
-                    const num = parseInt(dayVal, 10);
-                    let dayStr = dayVal;
-                    if (!isNaN(num)) {
-                        if (num <= 10) dayStr = '初' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][num];
-                        else if (num < 20) dayStr = '十' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][num - 10];
-                        else if (num === 20) dayStr = '二十';
-                        else if (num < 30) dayStr = '廿' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][num - 20];
-                        else if (num === 30) dayStr = '三十';
+                if (mVal && dayVal) {
+                    // 1. 處理月份：清洗 CLDR 內部代碼如 "M09", "M04L", "9"
+                    const monthNames = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '臘'];
+                    const isLeap = /L|閏|闰/i.test(mVal);
+                    const mNumMatch = mVal.match(/\d+/);
+                    let mStr = '';
+
+                    if (mNumMatch) {
+                        const mNum = parseInt(mNumMatch[0], 10);
+                        if (mNum >= 1 && mNum <= 12) {
+                            mStr = (isLeap ? '閏' : '') + monthNames[mNum - 1] + '月';
+                        }
                     }
-                    return `農曆 ${m}${dayStr}`;
+
+                    if (!mStr) {
+                        mStr = mVal.replace(/[a-zA-Z]/g, '').trim();
+                        if (!mStr.includes('月')) mStr += '月';
+                    }
+
+                    // 2. 處理日期：相容 "23", "廿三", "d23" 等格式
+                    const dayNumMatch = dayVal.match(/\d+/);
+                    let dayStr = dayVal.replace(/[a-zA-Z]/g, '').trim();
+                    if (dayNumMatch) {
+                        const num = parseInt(dayNumMatch[0], 10);
+                        if (num >= 1 && num <= 30) {
+                            if (num <= 10) dayStr = '初' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][num];
+                            else if (num < 20) dayStr = '十' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][num - 10];
+                            else if (num === 20) dayStr = '二十';
+                            else if (num < 30) dayStr = '廿' + ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'][num - 20];
+                            else if (num === 30) dayStr = '三十';
+                        }
+                    }
+
+                    return `農曆 ${mStr}${dayStr}`;
                 }
                 return `農曆 ${LUNAR_FMT.format(d)}`;
             } catch (e) {
@@ -458,15 +465,14 @@
             return 'ph-sun-dim';
         }
 
-        /* ================= 6. 地點切換與數據同步 ================= */
+        /* ================= 6. 地點氣溫數據同步 (固定選用尖沙咀天文台總部) ================= */
         function updateStationTemperature() {
             if (!cachedRhrData) return;
             const tempData = cachedRhrData.temperature?.data || [];
-            const activeStation = STATIONS[currentStationIndex];
-            document.getElementById('station-name').textContent = activeStation.label;
-
+            // 固定選用尖沙咀（香港天文台總部），若未取得則由九龍城或首站遞補
+            const tstKeys = ['香港天文台', '九龍城'];
             let matched = null;
-            for (const key of activeStation.keys) {
+            for (const key of tstKeys) {
                 matched = tempData.find(d => d.place && d.place.includes(key));
                 if (matched) break;
             }
@@ -476,12 +482,6 @@
                 const v = parseFloat(matched.value);
                 document.getElementById('temp-display').textContent = isNaN(v) ? '--°' : `${Math.round(v)}°`;
             }
-        }
-
-        function toggleStation() {
-            currentStationIndex = (currentStationIndex + 1) % STATIONS.length;
-            localStorage.setItem('eink_station_pref', currentStationIndex);
-            updateStationTemperature();
         }
 
         /* ================= 7. 天氣主流程 (含併發保護與防閃爍靜默更新) ================= */
@@ -565,8 +565,8 @@
                 if (fc.length > 0) {
                     const today = fc[0];
                     
-                    // 天氣敘述安全斷行 (限制最多 2 行)
-                    renderTextWithBreaks(document.getElementById('weather-desc'), today.forecastWeather || '--', /[。，；]/, 2);
+                    // 天氣敘述安全斷行 (無按鈕阻礙，最多支援 3 行，高度受控不推擠其他元件)
+                    renderTextWithBreaks(document.getElementById('weather-desc'), today.forecastWeather || '--', /[。，；]/, 3);
 
                     // 今日最高 / 最低溫 (統一透過 toTemp 解析)
                     document.getElementById('temp-range').textContent =
@@ -710,7 +710,6 @@
                 renderCalendar();
             });
             document.getElementById('mode-btn').addEventListener('click', toggleMode);
-            document.getElementById('station-toggle-btn').addEventListener('click', toggleStation);
 
             // 支援休眠喚醒與省電：分頁不可見時暫停計時器，恢復時立即校準時間與同步氣象
             document.addEventListener('visibilitychange', () => {
