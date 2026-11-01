@@ -173,11 +173,18 @@
     <script>
         let hkHolidays = {};
         const holidayPromises = {};
-        let displayedYear = new Date().getFullYear();
-        let displayedMonth = new Date().getMonth();
-        let lastKnownYear = new Date().getFullYear();
-        let lastKnownMonth = new Date().getMonth();
-        let lastKnownDate = new Date().getDate();
+        let clockOffsetMs = 0;
+
+        // 中央可信時間：本地時間加上伺服器偏移量
+        function getNow() {
+            return new Date(Date.now() + clockOffsetMs);
+        }
+
+        let displayedYear = getNow().getFullYear();
+        let displayedMonth = getNow().getMonth();
+        let lastKnownYear = getNow().getFullYear();
+        let lastKnownMonth = getNow().getMonth();
+        let lastKnownDate = getNow().getDate();
         let clockTimer = null;
         let weatherTimer = null;
         let isFastMode = false;
@@ -186,6 +193,43 @@
 
         // 溫度數值解析工具（容許 0°C，非有限數值回退為 '--'）
         const toTemp = v => (Number.isFinite(Number(v)) ? Number(v) : '--');
+
+        // 解析天文台發佈時間 (支援 ISO 8601 及中文日期字串)
+        function parseHkoUpdateTime(str) {
+            if (!str) return null;
+            const iso = Date.parse(str);
+            if (!isNaN(iso)) return iso;
+            const m = String(str).match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2})時(\d{1,2})分/);
+            if (m) {
+                return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
+            }
+            return null;
+        }
+
+        // 格式化發佈時間為 HH:mm
+        function formatUpdateTimeStr(timeMs, rawStr) {
+            if (timeMs && !isNaN(timeMs)) {
+                const d = new Date(timeMs);
+                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+            }
+            if (rawStr) {
+                const m = String(rawStr).match(/(\d{1,2})[時:](\d{1,2})/);
+                if (m) return `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}`;
+            }
+            return formatTime(getNow());
+        }
+
+        // 校準伺服器時鐘偏移量（純依賴精確的 HTTP Date 標頭，偏差 > 3 秒才平滑對齊以防邊緣振盪）
+        function syncServerClock(targetMs) {
+            if (!targetMs || isNaN(targetMs)) return;
+            const currentAdjusted = Date.now() + clockOffsetMs;
+            const diff = targetMs - currentAdjusted;
+
+            if (Math.abs(diff) > 3000) {
+                clockOffsetMs += diff;
+                alignClock();
+            }
+        }
 
         // 農曆格式化器單例快取（採用繁體中文防止簡體「闰」字，避免每分鐘重複實例化）
         let LUNAR_FMT = null;
@@ -227,13 +271,25 @@
             });
         }
 
-        /* ================= 通用帶逾時的 fetch (預設 10 秒) ================= */
-        async function fetchJSON(url, timeoutMs = 10000) {
+        /* ================= 通用帶逾時的 fetch (預設 10 秒，可選是否參與校時) ================= */
+        async function fetchJSON(url, timeoutMs = 10000, syncClock = false) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
             try {
                 const res = await fetch(url, { signal: controller.signal });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                // 僅在指定時由 HTTP Date 標頭進行時鐘校準，避免並發請求重複觸發或互拉
+                if (syncClock) {
+                    const dateHeader = res.headers.get('date');
+                    if (dateHeader) {
+                        const httpMs = Date.parse(dateHeader);
+                        if (!isNaN(httpMs)) {
+                            syncServerClock(httpMs);
+                        }
+                    }
+                }
+
                 return await res.json();
             } finally {
                 clearTimeout(timer);
@@ -247,7 +303,7 @@
 
             holidayPromises[year] = (async () => {
                 try {
-                    const data = await fetchJSON(`https://date.nager.at/api/v3/PublicHolidays/${year}/HK`, 8000);
+                    const data = await fetchJSON(`https://date.nager.at/api/v3/PublicHolidays/${year}/HK`, 8000, false);
                     if (Array.isArray(data)) {
                         hkHolidays[year] = data.map(ev => ev.date.replace(/-/g, ''));
                     }
@@ -290,9 +346,9 @@
             }
         }
 
-        /* ================= 3. 月曆生成 ================= */
+        /* ================= 3. 月曆生成 (補全每週首尾天數，確保每週完整 7 天) ================= */
         function renderCalendar() {
-            const now = new Date();
+            const now = getNow();
             const year = displayedYear, month = displayedMonth;
             const today = now.getDate();
             document.getElementById('calendar-month-title').innerText =
@@ -309,7 +365,13 @@
             headerHtml += `</div>`;
 
             let bodyHtml = `<div class="grid grid-cols-7 text-center text-3xl font-black flex-1 items-center justify-items-center w-full content-around">`;
-            for (let i = 0; i < firstDay; i++) bodyHtml += `<div></div>`;
+            
+            // 補齊月初前一月的末尾天數（採用 eink-text-gray 維持高對比，去除不穩定的 opacity）
+            const prevMonthLastDate = new Date(year, month, 0).getDate();
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const pDay = prevMonthLastDate - i;
+                bodyHtml += `<div class="eink-text-gray font-bold">${pDay}</div>`;
+            }
 
             const currentHolidays = hkHolidays[year] || [];
             const isViewingCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
@@ -331,6 +393,14 @@
                     bodyHtml += `<div class="${isWeekend ? 'eink-text-gray' : 'text-black'}">${i}</div>`;
                 }
             }
+
+            // 補齊月末下個月的最初天數，確保該週填滿 7 天
+            const lastDayDow = new Date(year, month, daysInMonth).getDay();
+            const trailingDays = 6 - lastDayDow;
+            for (let i = 1; i <= trailingDays; i++) {
+                bodyHtml += `<div class="eink-text-gray font-bold">${i}</div>`;
+            }
+
             bodyHtml += `</div>`;
             document.getElementById('calendar-container').innerHTML = `${headerHtml}${bodyHtml}`;
         }
@@ -341,7 +411,7 @@
         }
 
         function updateTimeUI() {
-            const now = new Date();
+            const now = getNow();
             const days = ['日','一','二','三','四','五','六'];
             document.getElementById('date-display').innerText =
                 `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 (${days[now.getDay()]})`;
@@ -368,9 +438,9 @@
         function alignClock() {
             if (clockTimer) clearTimeout(clockTimer);
             updateTimeUI();
-            const now = new Date();
+            const now = getNow();
             const msToNextMinute = 60000 - (now.getSeconds()*1000 + now.getMilliseconds());
-            clockTimer = setTimeout(alignClock, msToNextMinute);
+            clockTimer = setTimeout(alignClock, Math.max(500, msToNextMinute));
         }
 
         /* ================= 5. 香港天文台全圖標映射 ================= */
@@ -429,9 +499,16 @@
                 if (!hasInitialWeatherLoaded || isManual) {
                     statusEl.textContent = '更新中…';
                 }
-                const [rhr, fnd] = await Promise.all([fetchJSON(rhrUrl), fetchJSON(fndUrl)]);
+                // rhr 負責校準時鐘，fnd 不參與校時，避免同次更新重複觸發重繪
+                const [rhr, fnd] = await Promise.all([
+                    fetchJSON(rhrUrl, 10000, true),
+                    fetchJSON(fndUrl, 10000, false)
+                ]);
                 cachedRhrData = rhr;
                 hasInitialWeatherLoaded = true;
+
+                // 提取天文台官方資料發佈時間（僅供介面顯示，不作時鐘校準避免觀測滯後導致時鐘倒流）
+                const serverTimeMs = parseHkoUpdateTime(rhr.updateTime);
 
                 // ① 警告橫幅安全插入 (嚴格限制為最多 2 行，防止推擠版面)
                 const warnings = Array.isArray(rhr.warningMessage)
@@ -520,7 +597,7 @@
                     document.getElementById('psr-display').textContent = today.PSR || '--';
 
                     // 五天預報卡片：以預報日期精準判斷今天高亮
-                    const now = new Date();
+                    const now = getNow();
                     const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
                     const days = fc.slice(0, 5).map(wf => {
@@ -583,7 +660,9 @@
                     forecastContainer.replaceChildren();
                 }
 
-                statusEl.textContent = `更新於 ${new Date().toLocaleTimeString('zh-HK', {hour:'2-digit', minute:'2-digit'})}`;
+                // 顯示天文台官方觀測發布時間，語意精準且與實際資料完全吻合
+                const displayTime = formatUpdateTimeStr(serverTimeMs, rhr.updateTime);
+                statusEl.textContent = `更新於 ${displayTime}`;
             } catch (err) {
                 console.error('天氣讀取失敗:', err);
                 statusEl.textContent = '讀取失敗';
@@ -624,7 +703,7 @@
                 renderCalendar();
             });
             document.getElementById('reset-month').addEventListener('click', async () => {
-                const now = new Date();
+                const now = getNow();
                 displayedYear = now.getFullYear();
                 displayedMonth = now.getMonth();
                 await fetchHolidays(displayedYear);
