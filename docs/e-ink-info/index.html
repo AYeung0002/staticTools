@@ -8,14 +8,13 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
-        /* 模擬墨水屏特質：極高對比、無平滑灰階漸層、粗體字為主 */
+        * { box-sizing: border-box; }
         body {
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
             background-color: #ffffff;
             color: #000000;
             margin: 0;
             padding: 5px;
-            box-sizing: border-box;
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -26,142 +25,162 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
-
-        /* 隱藏滾動條 */
         ::-webkit-scrollbar { display: none; }
-        
-        /* 增強墨水屏黑白對比感 */
-        .eink-black { background-color: #000; color: #fff; }
-        .eink-border { border-color: #000; }
-        .eink-text-gray { color: #777; }
-        button:active { background-color: #000; color: #fff; }
-        * { box-sizing: border-box; }
+        .eink-black { background-color: #000000; color: #ffffff; }
+        .eink-border { border-color: #000000; }
+        .eink-text-gray { color: #555555; }
+        button:active { background-color: #000000; color: #ffffff; }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 滿版容器 -->
-    <div class="w-full h-full flex bg-white justify-between overflow-hidden">
-        
-        <!-- ================= 左側：時間與日曆 (佔比約 48%) ================= -->
-        <div class="w-[48%] flex flex-col pr-4 py-2 border-r-[3px] eink-border justify-between h-full min-h-0">
-            
-            <!-- 時間與日期區域 -->
-            <div class="text-center flex flex-col items-center flex-none">
-                <!-- 極大化時間 -->
-                <div id="time-display" class="text-[8.5rem] font-black leading-[0.8] tracking-tighter tabular-nums -mt-2 text-black">--:--</div>
-                <!-- 日期 -->
-                <div id="date-display" class="text-[32px] font-black mt-3.5 tracking-tight text-black">載入中...</div>
-                <!-- 農曆 -->
-                <div id="lunar-display" class="mt-2.5 border eink-border rounded-md px-2.5 py-0.5 text-base font-bold inline-block eink-text-gray bg-white">
-                    --
-                </div>
-            </div>
+    <div class="w-full h-full flex bg-white justify-between overflow-hidden relative">
 
-            <!-- 日曆區域 -->
+        <!-- ================= 左側：時間與日曆 ================= -->
+        <div class="w-[48%] flex flex-col pr-4 py-2 border-r-[3px] eink-border justify-between h-full min-h-0">
+            <div class="text-center flex flex-col items-center flex-none">
+                <div id="time-display" class="text-[8.5rem] font-black leading-[0.8] tracking-tighter tabular-nums -mt-2 text-black">--:--</div>
+                <div id="date-display" class="text-[32px] font-bold mt-3.5 tracking-tight text-black">載入中...</div>
+                <div id="lunar-display" class="mt-2.5 border-2 eink-border rounded-md px-2.5 py-0.5 text-base font-bold inline-block text-black bg-white">--</div>
+            </div>
             <div class="flex-1 flex flex-col mt-3 min-h-0 justify-between">
-                <!-- 日曆標頭 -->
                 <div class="flex justify-between items-center mb-1.5 flex-none">
-                    <div class="flex items-center gap-2 font-black text-2xl text-black">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <div class="flex items-center gap-2 font-bold text-2xl text-black">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         <span id="calendar-month-title">-- / ----</span>
                     </div>
                     <div class="flex gap-1 text-black">
-                        <button id="prev-month" aria-label="上一個月" class="border-2 eink-border rounded px-2 py-0.5 font-bold text-lg active:bg-black active:text-white">◀</button>
-                        <button id="reset-month" aria-label="返回本月" class="border-2 eink-border rounded px-3 py-0.5 font-bold text-lg active:bg-black active:text-white" title="回到本月">今日</button>
-                        <button id="next-month" aria-label="下一個月" class="border-2 eink-border rounded px-2 py-0.5 font-bold text-lg active:bg-black active:text-white">▶</button>
+                        <button type="button" id="prev-month" aria-label="上一個月" class="border-2 eink-border rounded px-2 py-0.5 font-bold text-lg active:bg-black active:text-white">◀</button>
+                        <button type="button" id="reset-month" aria-label="返回本月" class="border-2 eink-border rounded px-3 py-0.5 font-bold text-lg active:bg-black active:text-white" title="回到本月">今日</button>
+                        <button type="button" id="next-month" aria-label="下一個月" class="border-2 eink-border rounded px-2 py-0.5 font-bold text-lg active:bg-black active:text-white">▶</button>
                     </div>
                 </div>
-
-                <!-- 日曆表頭與網格 -->
                 <div id="calendar-container" class="flex-1 flex flex-col justify-between min-h-0"></div>
             </div>
         </div>
 
-        <!-- ================= 右側：天氣與預報 (佔比約 52%) ================= -->
-        <div class="w-[52%] flex flex-col pl-4 py-2 justify-between bg-white h-full min-h-0">
-            
-            <!-- ① 警告橫幅 (拆分兩行避免字體糊化，有警告時顯示) -->
-            <div id="warning-bar" class="bg-black text-white rounded-xl px-4 py-2 flex items-center justify-center gap-4 w-full flex-none hidden">
-                <svg class="w-8 h-8 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-                <div id="warning-text" class="font-bold text-xl leading-snug tracking-wide text-left">
-                    --
+        <!-- ================= 右側：警告 + 天氣 + 兩行純圖標細節 + 緊湊預報 ================= -->
+        <div class="w-[52%] flex flex-col pl-4 pr-3 py-2 bg-white h-full min-h-0 justify-between">
+
+            <!-- ① 天氣警告信號區 (無生效警告時完全隱藏) -->
+            <div id="alert-panel" class="flex-none w-full mb-1 flex flex-col gap-1.5 hidden">
+                <div id="alert-badges-container" class="bg-black text-white rounded-xl px-3 py-2 flex flex-wrap justify-center items-center gap-x-3 gap-y-2 cursor-pointer active:bg-gray-800 hidden"></div>
+                <div id="alert-details" class="border-[2.5px] eink-border rounded-xl px-3 py-1.5 bg-white flex items-start gap-2 cursor-pointer active:bg-black active:text-white group hidden">
+                    <i class="ph-fill ph-warning-circle text-2xl text-black group-active:text-white leading-none mt-0.5 shrink-0"></i>
+                    <div id="alert-details-text" class="text-[0.95rem] font-bold leading-snug line-clamp-2"></div>
                 </div>
             </div>
 
-            <!-- ② 當前天氣區域 (右側全版預留給預報敘述，不顯示位置，高度嚴格受控防止溢出) -->
-            <div class="flex justify-between items-center w-full mt-1 flex-none min-h-[105px] max-h-[110px]">
-                <!-- 左半部：大圖示 + 主溫度 + 最高低溫 (整合在一起) -->
-                <div class="flex items-center gap-3 flex-none">
-                    <i id="main-icon" class="ph-fill ph-sun text-[5.8rem] text-black leading-none flex-none"></i>
+            <!-- ② 當前天氣區域 -->
+            <div class="flex justify-between items-center w-full my-0.5 flex-none min-h-[95px] max-h-[110px]">
+                <div class="flex items-center gap-2 flex-none">
+                    <i id="main-icon" class="ph-fill ph-sun text-[5rem] text-black leading-none flex-none"></i>
                     <div class="flex flex-col justify-center">
-                        <div id="temp-display" class="text-[5.5rem] font-black leading-[0.85] tabular-nums tracking-tighter text-black">--°</div>
-                        <div id="temp-range" class="text-2xl font-black mt-2 tabular-nums text-black">--° / --°</div>
+                        <div id="temp-display" class="text-[5rem] font-black leading-[0.85] tabular-nums tracking-tighter text-black">--°</div>
+                        <div id="temp-range" class="text-2xl font-bold mt-1 tabular-nums text-black">--° / --°</div>
+                    </div>
+                </div>
+                <div id="weather-desc-container" class="flex-1 flex flex-col justify-end pb-1.5 items-end pl-3 max-h-[100px] min-w-0 overflow-hidden cursor-pointer active:opacity-60">
+                    <div id="weather-desc-text" class="text-[1.1rem] font-bold text-right leading-snug text-black line-clamp-3">載入中...</div>
+                </div>
+            </div>
+
+            <div class="w-full h-[2.5px] bg-black my-0.5 flex-none"></div>
+
+            <!-- ③ 氣象細節 (純圖標高對比設計) -->
+            <div class="flex flex-col justify-center gap-2 px-1 py-1.5 flex-none bg-white">
+                <!-- 第一行：濕度、紫外線(移除底線，點擊彈窗導讀)、降雨機率 -->
+                <div class="flex items-center justify-between w-full px-1">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-7 h-7 flex-none text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"></path></svg>
+                        <span id="humidity-display" class="text-3xl font-black tabular-nums text-black">--%</span>
+                    </div>
+
+                    <!-- UV 點擊導讀區塊（無下劃線） -->
+                    <div id="uv-container" class="flex items-center gap-2 cursor-pointer active:opacity-60" title="點擊查看紫外線指數導讀">
+                        <svg class="w-7 h-7 flex-none text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <span id="uv-display" class="text-3xl font-black tabular-nums text-black">--</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <svg class="w-7 h-7 flex-none text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 19l-2 3m6-3l-2 3m6-3l-2 3"></path>
+                        </svg>
+                        <span id="psr-display" class="text-3xl font-black text-black">--</span>
                     </div>
                 </div>
 
-                <!-- 右半部：純天氣敘述 (去除按鈕，垂直置中，最大高度防溢出保護) -->
-                <div class="flex-1 flex flex-col justify-center items-end pl-4 max-h-[108px] overflow-hidden">
-                    <div id="weather-desc" class="text-xl font-black text-right leading-snug text-black">
-                        載入中...
+                <!-- 第二行：風向風速、空氣質素 (AQHI) -->
+                <div class="flex items-center justify-between w-full px-1 pt-1.5 border-t-2 border-dashed border-gray-400">
+                    <div class="flex items-center gap-2.5">
+                        <i class="ph-fill ph-wind text-3xl text-black leading-none flex-none"></i>
+                        <span id="wind-display" class="text-2xl font-black tracking-tight text-black">--</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <i class="ph-fill ph-leaf text-3xl text-black leading-none flex-none"></i>
+                        <span id="aqhi-display" class="text-2xl font-black tabular-nums text-black">--</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 分隔線 -->
-            <div class="w-full h-[3px] bg-black my-1 flex-none"></div>
-
-            <!-- ③ 氣象細節：放大圖示與文字，均勻分佈 (2x2) -->
-            <div class="grid grid-cols-2 gap-x-4 gap-y-3.5 py-1.5 pl-2 pr-4 flex-none">
-                <!-- 濕度 -->
-                <div class="flex items-center gap-3">
-                    <svg class="w-9 h-9 flex-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"></path></svg>
-                    <span id="humidity-display" class="text-4xl font-black tabular-nums">--%</span>
-                </div>
-                <!-- 紫外線 -->
-                <div class="flex items-center gap-3">
-                    <svg class="w-9 h-9 flex-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <span id="uv-display" class="text-4xl font-black">--</span>
-                </div>
-                <!-- 風力 -->
-                <div class="flex items-center gap-3">
-                    <svg class="w-9 h-9 flex-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"></path></svg>
-                    <span id="wind-display" class="text-4xl font-black whitespace-nowrap">--</span>
-                </div>
-                <!-- 降雨機率 -->
-                <div class="flex items-center gap-3">
-                    <svg class="w-9 h-9 flex-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 19l-2 3m6-3l-2 3m6-3l-2 3"></path>
-                    </svg>
-                    <span id="psr-display" class="text-4xl font-black">--</span>
-                </div>
-            </div>
-
-            <!-- 分隔線 -->
-            <div class="w-full h-[3px] bg-black my-1 flex-none"></div>
+            <div class="w-full h-[2.5px] bg-black my-0.5 flex-none"></div>
 
             <!-- ④ 未來五天預報區域 -->
-            <div class="flex flex-col flex-1 min-h-0 justify-between mt-1">
-                <!-- 標題與更新按鈕 -->
-                <div class="flex justify-between items-end mb-1.5 flex-none">
-                    <div class="flex items-center gap-2 text-xl font-bold text-black">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-                        未來五天 <span id="status-display" class="text-lg eink-text-gray font-bold">載入中...</span>
+            <div class="flex flex-col flex-none min-h-0">
+                <div class="flex justify-between items-end mb-1 flex-none">
+                    <div class="flex items-center gap-1.5 text-lg font-bold text-black min-w-0 pr-2">
+                        <svg class="w-5 h-5 flex-none" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                        <span class="flex-none">未來五天</span>
+                        <span id="status-display" class="text-sm font-bold text-black truncate">載入中...</span>
                     </div>
-                    <button id="mode-btn" aria-label="切換更新頻率" class="border-2 eink-border rounded px-2.5 py-0.5 text-lg font-bold flex items-center gap-1 active:bg-black active:text-white" title="切換刷新頻率">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        <span id="mode-text">15分</span>
+                    <!-- 立即刷新按鈕 (純局部刷新) -->
+                    <button type="button" id="refresh-btn" aria-label="立即刷新數據" class="border-2 eink-border rounded px-2.5 py-0.5 text-base font-bold flex items-center gap-1 active:bg-black active:text-white flex-none" title="立即刷新數據">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <span id="refresh-btn-text">刷新</span>
                     </button>
                 </div>
 
-                <!-- 五天卡片 (緊湊排列，去除內部多餘留白) -->
-                <div id="forecast-row" class="grid grid-cols-5 gap-2 pb-0.5 flex-1 min-h-0"></div>
+                <!-- 未來展望橫幅 -->
+                <div id="outlook-banner" class="border-[2.5px] eink-border rounded-xl px-3 py-1.5 mb-1.5 flex items-center gap-2.5 flex-none bg-white cursor-pointer active:bg-black active:text-white group">
+                    <span class="text-base font-black bg-black text-white group-active:bg-white group-active:text-black px-2.5 py-1.5 rounded-lg shrink-0 leading-normal inline-flex items-center">展望</span>
+                    <span id="outlook-text" class="text-lg font-bold leading-snug line-clamp-2 text-black group-active:text-white">載入中...</span>
+                </div>
+
+                <!-- 五天卡片區域 -->
+                <div id="forecast-row" class="grid grid-cols-5 gap-1.5 h-[154px] flex-none"></div>
             </div>
 
         </div>
+
+        <!-- ================= ⑤ 詳細資訊彈窗 (移除 pre-wrap，防止頂部空白) ================= -->
+        <div id="info-modal" class="fixed inset-0 z-50 bg-black/75 hidden flex items-center justify-center p-4">
+            <div class="bg-white border-[4px] eink-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl relative">
+                <div class="flex justify-between items-center border-b-[3px] eink-border px-5 py-3 shrink-0">
+                    <h2 id="modal-title" class="text-2xl font-black text-black">詳細資訊</h2>
+                    <button type="button" id="close-modal" aria-label="關閉視窗" class="border-[2.5px] eink-border rounded-full p-1.5 active:bg-black active:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div id="modal-content" class="p-4 overflow-y-auto text-black"></div>
+                <div class="p-3 border-t-[3px] eink-border shrink-0">
+                    <button type="button" id="close-modal-bottom" class="w-full py-2 border-[3px] eink-border rounded-xl font-black text-xl bg-white active:bg-black active:text-white">關閉視窗</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -169,10 +188,7 @@
         const holidayPromises = {};
         let clockOffsetMs = 0;
 
-        // 中央可信時間：本地時間加上伺服器偏移量
-        function getNow() {
-            return new Date(Date.now() + clockOffsetMs);
-        }
+        function getNow() { return new Date(Date.now() + clockOffsetMs); }
 
         let displayedYear = getNow().getFullYear();
         let displayedMonth = getNow().getMonth();
@@ -180,52 +196,51 @@
         let lastKnownMonth = getNow().getMonth();
         let lastKnownDate = getNow().getDate();
         let clockTimer = null;
-        let weatherTimer = null;
-        let isFastMode = false;
         let isFetchingWeather = false;
         let hasInitialWeatherLoaded = false;
+        let lastWeatherSuccessTime = 0;
+        const AUTO_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
-        // 溫度數值解析工具（容許 0°C，非有限數值回退為 '--'）
+        const MAX_VISIBLE_BADGES = 3;
+        let currentActiveWarnings = [];
+        let currentAlertFullText = '';
+        let currentWeatherFullText = '';
+        let currentOutlookFullText = '';
+
         const toTemp = v => (Number.isFinite(Number(v)) ? Number(v) : '--');
 
-        // 解析天文台發佈時間 (支援 ISO 8601 及中文日期字串)
+        function escapeHTML(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function parseHkoUpdateTime(str) {
             if (!str) return null;
             const iso = Date.parse(str);
             if (!isNaN(iso)) return iso;
             const m = String(str).match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2})時(\d{1,2})分/);
-            if (m) {
-                return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
-            }
+            if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
             return null;
         }
 
-        // 格式化發佈時間為 HH:mm
-        function formatUpdateTimeStr(timeMs, rawStr) {
-            if (timeMs && !isNaN(timeMs)) {
-                const d = new Date(timeMs);
-                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-            }
-            if (rawStr) {
-                const m = String(rawStr).match(/(\d{1,2})[時:](\d{1,2})/);
-                if (m) return `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}`;
-            }
-            return formatTime(getNow());
+        function formatTimeHM(timeMs) {
+            const d = timeMs ? new Date(timeMs) : getNow();
+            return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
         }
 
-        // 校準伺服器時鐘偏移量（純依賴精確的 HTTP Date 標頭，偏差 > 3 秒才平滑對齊以防邊緣振盪）
         function syncServerClock(targetMs) {
             if (!targetMs || isNaN(targetMs)) return;
             const currentAdjusted = Date.now() + clockOffsetMs;
             const diff = targetMs - currentAdjusted;
-
             if (Math.abs(diff) > 3000) {
                 clockOffsetMs += diff;
                 alignClock();
             }
         }
 
-        // 農曆格式化器單例快取（採用繁體中文防止簡體「闰」字，避免每分鐘重複實例化）
         let LUNAR_FMT = null;
         try {
             LUNAR_FMT = new Intl.DateTimeFormat('zh-Hant-u-ca-chinese', { month: 'long', day: 'numeric' });
@@ -239,70 +254,160 @@
 
         let cachedRhrData = null;
 
-        /* ================= 輔助工具：安全多行文字插入 (限制最大行數，避免佈局溢出) ================= */
-        function renderTextWithBreaks(targetEl, text, delimiters = /[。，；]/, maxSegments = 2) {
-            targetEl.replaceChildren();
-            let segments = String(text || '').replace(/[。！!.]+$/, '').split(delimiters).map(s => s.trim()).filter(Boolean);
-            if (segments.length > maxSegments) {
-                const head = segments.slice(0, maxSegments - 1);
-                const tail = segments.slice(maxSegments - 1).join('，');
-                segments = [...head, tail];
-            }
-            segments.forEach((seg, idx) => {
-                targetEl.appendChild(document.createTextNode(seg));
-                if (idx < segments.length - 1) {
-                    targetEl.appendChild(document.createElement('br'));
-                }
-            });
+        /* ================= 彈窗控制 ================= */
+        const modal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+
+        function openModal(title, contentHtml) {
+            modalTitle.textContent = title;
+            modalContent.innerHTML = contentHtml;
+            modal.classList.remove('hidden');
+        }
+        function closeModal() {
+            modal.classList.add('hidden');
         }
 
-        /* ================= 通用帶逾時的 fetch (預設 10 秒，可選是否參與校時) ================= */
-        async function fetchJSON(url, timeoutMs = 10000, syncClock = false) {
+        document.getElementById('close-modal').addEventListener('click', closeModal);
+        document.getElementById('close-modal-bottom').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        document.getElementById('alert-badges-container').addEventListener('click', () => {
+            if (currentActiveWarnings.length === 0) return;
+            let listHtml = '<div class="grid grid-cols-2 gap-3 sm:gap-4">';
+            currentActiveWarnings.forEach(w => {
+                const isSevere = w.id.startsWith('TC') || w.id.includes('TC') || w.id === 'RAINB' || w.id.includes('RAINB');
+                const badgeIcon = w.svg.replace('w-5 h-5', 'w-7 h-7').replace('text-lg', 'text-2xl');
+                listHtml += `
+                    <div class="flex items-center gap-2.5 p-3 rounded-xl border-[3px] ${isSevere ? 'bg-black text-white border-black' : 'bg-white border-black text-black'}">
+                        ${badgeIcon}
+                        <span class="text-lg sm:text-xl font-black leading-tight">${escapeHTML(w.name)}</span>
+                    </div>`;
+            });
+            listHtml += '</div>';
+            listHtml += '<div class="mt-4 pt-3 border-t-2 border-dashed border-gray-400 text-base font-bold text-gray-800 leading-relaxed text-center">以上為目前生效的天氣警告</div>';
+            openModal(`生效警告 (${currentActiveWarnings.length})`, listHtml);
+        });
+
+        document.getElementById('alert-details').addEventListener('click', () => {
+            if (!currentAlertFullText) return;
+            openModal('警告詳細內容', `<div class="whitespace-pre-wrap text-xl font-bold leading-relaxed">${escapeHTML(currentAlertFullText)}</div>`);
+        });
+
+        document.getElementById('weather-desc-container').addEventListener('click', () => {
+            if (!currentWeatherFullText) return;
+            openModal('今日天氣預報', `<div class="whitespace-pre-wrap text-xl font-bold leading-relaxed">${escapeHTML(currentWeatherFullText)}</div>`);
+        });
+
+        document.getElementById('outlook-banner').addEventListener('click', () => {
+            if (!currentOutlookFullText) return;
+            openModal('未來天氣展望', `<div class="whitespace-pre-wrap text-xl font-bold leading-relaxed">${escapeHTML(currentOutlookFullText)}</div>`);
+        });
+
+        // 緊湊無頂部空白的紫外線指南 HTML
+        const UV_GUIDE_HTML = `<div class="flex flex-col gap-2">
+            <div class="border-[2.5px] border-black rounded-xl p-2.5 flex items-center justify-between bg-white">
+                <div class="flex items-center gap-2">
+                    <span class="bg-black text-white text-base font-black px-2 py-0.5 rounded leading-none">0 - 2</span>
+                    <span class="text-lg font-black">低 (Low)</span>
+                </div>
+                <span class="text-sm font-bold text-gray-800">適宜戶外活動，正常情況無需特別防護</span>
+            </div>
+            <div class="border-[2.5px] border-black rounded-xl p-2.5 flex items-center justify-between bg-white">
+                <div class="flex items-center gap-2">
+                    <span class="bg-black text-white text-base font-black px-2 py-0.5 rounded leading-none">3 - 5</span>
+                    <span class="text-lg font-black">中等 (Moderate)</span>
+                </div>
+                <span class="text-sm font-bold text-gray-800">戴遮陽帽、太陽眼鏡或塗抹防曬乳</span>
+            </div>
+            <div class="border-[2.5px] border-black rounded-xl p-2.5 flex items-center justify-between bg-gray-100">
+                <div class="flex items-center gap-2">
+                    <span class="bg-black text-white text-base font-black px-2 py-0.5 rounded leading-none">6 - 7</span>
+                    <span class="text-lg font-black">高 (High)</span>
+                </div>
+                <span class="text-sm font-bold text-black">皮膚易曬傷，避免暴曬，宜打傘遮陽</span>
+            </div>
+            <div class="border-[2.5px] border-black rounded-xl p-2.5 flex items-center justify-between bg-gray-200">
+                <div class="flex items-center gap-2">
+                    <span class="bg-black text-white text-base font-black px-2 py-0.5 rounded leading-none">8 - 10</span>
+                    <span class="text-lg font-black">甚高 (Very High)</span>
+                </div>
+                <span class="text-sm font-bold text-black">盡量留室內，戶外穿長袖防護衣物</span>
+            </div>
+            <div class="border-[2.5px] border-black rounded-xl p-2.5 flex items-center justify-between bg-black text-white">
+                <div class="flex items-center gap-2">
+                    <span class="bg-white text-black text-base font-black px-2 py-0.5 rounded leading-none">11+</span>
+                    <span class="text-lg font-black">極高 (Extreme)</span>
+                </div>
+                <span class="text-sm font-bold text-gray-200">避免外出，數分鐘內皮膚可受損</span>
+            </div>
+            <div class="mt-2 pt-2 border-t-2 border-dashed border-gray-400 text-xs font-bold text-gray-600 text-center">
+                標準來源：香港天文台與世界衛生組織 (WHO)
+            </div>
+        </div>`;
+
+        document.getElementById('uv-container').addEventListener('click', () => {
+            const curUv = document.getElementById('uv-display').textContent.trim();
+            openModal(`紫外線指數導讀 (目前: ${curUv})`, UV_GUIDE_HTML);
+        });
+
+        async function fetchJSON(url, timeoutMs = 8000, syncClock = false) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
             try {
                 const res = await fetch(url, { signal: controller.signal });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                // 僅在指定時由 HTTP Date 標頭進行時鐘校準，避免並發請求重複觸發或互拉
                 if (syncClock) {
                     const dateHeader = res.headers.get('date');
                     if (dateHeader) {
                         const httpMs = Date.parse(dateHeader);
-                        if (!isNaN(httpMs)) {
-                            syncServerClock(httpMs);
-                        }
+                        if (!isNaN(httpMs)) syncServerClock(httpMs);
                     }
                 }
-
                 return await res.json();
             } finally {
                 clearTimeout(timer);
             }
         }
 
-        /* ================= 1. 香港公眾假期獲取 (具備 in-flight 去重，失敗不快取) ================= */
+        async function fetchViaProxy(targetUrl, timeoutMs = 4000, asText = false) {
+            const encoded = encodeURIComponent(targetUrl);
+            const proxies = [
+                `https://api.allorigins.win/raw?url=${encoded}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encoded}`
+            ];
+
+            for (const proxyUrl of proxies) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const res = await fetch(proxyUrl, { signal: controller.signal });
+                    if (!res.ok) continue;
+                    return asText ? await res.text() : await res.json();
+                } catch (e) {
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+            return null;
+        }
+
         async function fetchHolidays(year) {
             if (hkHolidays[year] !== undefined) return;
             if (holidayPromises[year]) return holidayPromises[year];
-
             holidayPromises[year] = (async () => {
                 try {
-                    const data = await fetchJSON(`https://date.nager.at/api/v3/PublicHolidays/${year}/HK`, 8000, false);
-                    if (Array.isArray(data)) {
-                        hkHolidays[year] = data.map(ev => ev.date.replace(/-/g, ''));
-                    }
+                    const data = await fetchJSON(`https://date.nager.at/api/v3/PublicHolidays/${year}/HK`, 5000, false);
+                    if (Array.isArray(data)) hkHolidays[year] = data.map(ev => ev.date.replace(/-/g, ''));
                 } catch (e) {
                     console.warn(`假期讀取失敗 (${year}):`, e);
                 } finally {
                     delete holidayPromises[year];
                 }
             })();
-
             return holidayPromises[year];
         }
 
-        /* ================= 2. 中文傳統農曆轉換 (兼顧不同 WebView/ICU 的數值與文字輸出) ================= */
         function getLunarText(d) {
             if (!LUNAR_FMT) return '';
             try {
@@ -313,25 +418,18 @@
                     if (p.type === 'day') dayVal = p.value;
                 }
                 if (mVal && dayVal) {
-                    // 1. 處理月份：清洗 CLDR 內部代碼如 "M09", "M04L", "9"
                     const monthNames = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '臘'];
                     const isLeap = /L|閏|闰/i.test(mVal);
                     const mNumMatch = mVal.match(/\d+/);
                     let mStr = '';
-
                     if (mNumMatch) {
                         const mNum = parseInt(mNumMatch[0], 10);
-                        if (mNum >= 1 && mNum <= 12) {
-                            mStr = (isLeap ? '閏' : '') + monthNames[mNum - 1] + '月';
-                        }
+                        if (mNum >= 1 && mNum <= 12) mStr = (isLeap ? '閏' : '') + monthNames[mNum - 1] + '月';
                     }
-
                     if (!mStr) {
                         mStr = mVal.replace(/[a-zA-Z]/g, '').trim();
                         if (!mStr.includes('月')) mStr += '月';
                     }
-
-                    // 2. 處理日期：相容 "23", "廿三", "d23" 等格式
                     const dayNumMatch = dayVal.match(/\d+/);
                     let dayStr = dayVal.replace(/[a-zA-Z]/g, '').trim();
                     if (dayNumMatch) {
@@ -344,7 +442,6 @@
                             else if (num === 30) dayStr = '三十';
                         }
                     }
-
                     return `農曆 ${mStr}${dayStr}`;
                 }
                 return `農曆 ${LUNAR_FMT.format(d)}`;
@@ -353,7 +450,6 @@
             }
         }
 
-        /* ================= 3. 月曆生成 (補全每週首尾天數，確保每週完整 7 天) ================= */
         function renderCalendar() {
             const now = getNow();
             const year = displayedYear, month = displayedMonth;
@@ -367,17 +463,15 @@
             let headerHtml = `<div class="grid grid-cols-7 text-center pb-1 border-b-2 eink-border w-full flex-none">`;
             ['日','一','二','三','四','五','六'].forEach(d => {
                 const isWeekend = d === '日' || d === '六';
-                headerHtml += `<div class="text-xl font-black ${isWeekend ? 'eink-text-gray' : 'text-black'}">${d}</div>`;
+                headerHtml += `<div class="text-lg font-bold ${isWeekend ? 'eink-text-gray' : 'text-black'}">${d}</div>`;
             });
             headerHtml += `</div>`;
 
-            let bodyHtml = `<div class="grid grid-cols-7 text-center text-3xl font-black flex-1 items-center justify-items-center w-full content-around">`;
-            
-            // 補齊月初前一月的末尾天數（採用 eink-text-gray 維持高對比，去除不穩定的 opacity）
+            let bodyHtml = `<div class="grid grid-cols-7 text-center text-[1.8rem] font-bold flex-1 items-center justify-items-center w-full content-around">`;
+
             const prevMonthLastDate = new Date(year, month, 0).getDate();
             for (let i = firstDay - 1; i >= 0; i--) {
-                const pDay = prevMonthLastDate - i;
-                bodyHtml += `<div class="eink-text-gray font-bold">${pDay}</div>`;
+                bodyHtml += `<div class="eink-text-gray font-bold">${prevMonthLastDate - i}</div>`;
             }
 
             const currentHolidays = hkHolidays[year] || [];
@@ -390,18 +484,17 @@
                 const isToday = isViewingCurrentMonth && (i === today);
 
                 if (isToday) {
-                    bodyHtml += `<div class="w-10 h-10 eink-black rounded-full flex items-center justify-center">${i}</div>`;
+                    bodyHtml += `<div class="w-9 h-9 eink-black rounded-full flex items-center justify-center font-bold">${i}</div>`;
                 } else if (isHoliday) {
                     bodyHtml += `<div class="flex flex-col items-center justify-center leading-none mt-1">
                         <span class="${isWeekend ? 'eink-text-gray' : 'text-black'}">${i}</span>
-                        <div class="w-2 h-2 rounded-full bg-gray-600 mt-1"></div>
+                        <div class="w-1.5 h-1.5 rounded-full bg-black mt-0.5"></div>
                     </div>`;
                 } else {
                     bodyHtml += `<div class="${isWeekend ? 'eink-text-gray' : 'text-black'}">${i}</div>`;
                 }
             }
 
-            // 補齊月末下個月的最初天數，確保該週填滿 7 天
             const lastDayDow = new Date(year, month, daysInMonth).getDay();
             const trailingDays = 6 - lastDayDow;
             for (let i = 1; i <= trailingDays; i++) {
@@ -412,7 +505,6 @@
             document.getElementById('calendar-container').innerHTML = `${headerHtml}${bodyHtml}`;
         }
 
-        /* ================= 4. 時鐘與日期同步 (包含跨日/跨月自動切換) ================= */
         function formatTime(d) {
             return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
         }
@@ -425,7 +517,6 @@
             document.getElementById('lunar-display').innerText = getLunarText(now);
             document.getElementById('time-display').innerText = formatTime(now);
 
-            // 跨日或跨月檢查：若使用者原本停留在當前月份，自動跟隨跳至新月份；若停留在其他月份則僅重繪高亮
             const curDate = now.getDate();
             const curMonth = now.getMonth();
             const curYear = now.getFullYear();
@@ -440,6 +531,12 @@
                 }
                 fetchHolidays(displayedYear).then(renderCalendar);
             }
+
+            // 心跳定時檢測：超過 15 分鐘自動刷新數據
+            const nowMs = Date.now();
+            if (lastWeatherSuccessTime > 0 && (nowMs - lastWeatherSuccessTime >= AUTO_REFRESH_INTERVAL_MS)) {
+                fetchWeather(false);
+            }
         }
 
         function alignClock() {
@@ -450,7 +547,6 @@
             clockTimer = setTimeout(alignClock, Math.max(500, msToNextMinute));
         }
 
-        /* ================= 5. 香港天文台全圖標映射 ================= */
         function weatherIcon(rawCode) {
             const code = Array.isArray(rawCode) ? parseInt(rawCode[0], 10) : parseInt(rawCode, 10);
             if (isNaN(code)) return 'ph-sun';
@@ -465,26 +561,319 @@
             return 'ph-sun-dim';
         }
 
-        /* ================= 6. 地點氣溫數據同步 (固定選用尖沙咀天文台總部) ================= */
         function updateStationTemperature() {
             if (!cachedRhrData) return;
             const tempData = cachedRhrData.temperature?.data || [];
-            // 固定選用尖沙咀（香港天文台總部），若未取得則由九龍城或首站遞補
-            const tstKeys = ['香港天文台', '九龍城'];
+            const tstKeys = ['香港天文台', '九龍城', '京士柏'];
             let matched = null;
             for (const key of tstKeys) {
                 matched = tempData.find(d => d.place && d.place.includes(key));
                 if (matched) break;
             }
             if (!matched) matched = tempData[0];
-
             if (matched) {
                 const v = parseFloat(matched.value);
                 document.getElementById('temp-display').textContent = isNaN(v) ? '--°' : `${Math.round(v)}°`;
             }
         }
 
-        /* ================= 7. 天氣主流程 (含併發保護與防閃爍靜默更新) ================= */
+        function getWarningInfo(key, val) {
+            const code = (val?.code || key || '').toUpperCase();
+            const type = val?.type || val?.name || '';
+            let id = code || key;
+            let name = type || val?.name || key;
+            let svg = `<i class="ph-fill ph-warning-circle text-lg leading-none shrink-0"></i>`;
+
+            if (code.startsWith('TC') || key === 'WTCSGNL') {
+                svg = `<svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M11 6h2v7h-2zM11 15h2v3h-2z"/></svg>`;
+                if (code === 'TC1') name = '一號戒備信號';
+                else if (code === 'TC3') name = '三號強風信號';
+                else if (code === 'TC8NE') name = '八號東北風球';
+                else if (code === 'TC8NW') name = '八號西北風球';
+                else if (code === 'TC8SE') name = '八號東南風球';
+                else if (code === 'TC8SW') name = '八號西南風球';
+                else if (code.startsWith('TC8')) name = '八號風球';
+                else if (code === 'TC9') name = '九號風球';
+                else if (code === 'TC10') name = '十號風球';
+                else if (!type) name = '風球信號';
+            }
+            else if (code.includes('RAIN') || key === 'WRAIN') {
+                svg = `<i class="ph-fill ph-cloud-rain text-lg leading-none shrink-0"></i>`;
+                if (code.includes('RAINB') || type.includes('黑')) { id = 'RAINB'; name = '黑雨警告'; }
+                else if (code.includes('RAINR') || type.includes('紅')) { id = 'RAINR'; name = '紅雨警告'; }
+                else if (code.includes('RAINA') || type.includes('黃')) { id = 'RAINA'; name = '黃雨警告'; }
+                else { name = '暴雨警告'; }
+            }
+            else if (code === 'WTS' || key === 'WTS') {
+                id = 'TS'; name = '雷暴警告';
+                svg = `<i class="ph-fill ph-cloud-lightning text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code.includes('FIRE') || key === 'WFIRE') {
+                id = code;
+                if (type.includes('紅') || code.includes('FIRER')) name = '紅色火災警告';
+                else if (type.includes('黃') || code.includes('FIREY')) name = '黃色火災警告';
+                else name = '火災危險警告';
+                svg = `<i class="ph-fill ph-flame text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WHOT' || key === 'WHOT') {
+                id = 'WHOT'; name = '酷熱天氣';
+                svg = `<i class="ph-fill ph-sun text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WCOLD' || key === 'WCOLD') {
+                id = 'WCOLD'; name = '寒冷天氣';
+                svg = `<i class="ph-fill ph-snowflake text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WMSGNL' || key === 'WMSGNL') {
+                id = 'WMSGNL'; name = '季候風信號';
+                svg = `<i class="ph-fill ph-wind text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WL' || key === 'WL') {
+                id = 'LANDSLIP'; name = '山泥傾瀉';
+                svg = `<i class="ph-fill ph-mountains text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WFNTSA' || key === 'WFNTSA') {
+                id = 'FLOOD'; name = '水浸特別報告';
+                svg = `<i class="ph-fill ph-waves text-lg leading-none shrink-0"></i>`;
+            }
+            else if (code === 'WFROST' || key === 'WFROST') {
+                id = 'WFROST'; name = '霜凍警告';
+                svg = `<i class="ph-fill ph-snowflake text-lg leading-none shrink-0"></i>`;
+            }
+
+            return { id, name, svg };
+        }
+
+        function extractWarningsFromMessage(msg) {
+            const list = [];
+            const fireSvg = `<i class="ph-fill ph-flame text-lg leading-none shrink-0"></i>`;
+            const rainSvg = `<i class="ph-fill ph-cloud-rain text-lg leading-none shrink-0"></i>`;
+            const tsSvg = `<i class="ph-fill ph-cloud-lightning text-lg leading-none shrink-0"></i>`;
+            const tcSvg = `<svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path d="M11 6h2v7h-2zM11 15h2v3h-2z"/></svg>`;
+
+            if (/火災危險警告為紅色/i.test(msg)) list.push({ id: 'WFIRER', name: '紅色火災警告', svg: fireSvg });
+            else if (/火災危險警告為黃色/i.test(msg)) list.push({ id: 'WFIREY', name: '黃色火災警告', svg: fireSvg });
+            if (/黑色暴雨/i.test(msg)) list.push({ id: 'RAINB', name: '黑雨警告', svg: rainSvg });
+            else if (/紅色暴雨/i.test(msg)) list.push({ id: 'RAINR', name: '紅雨警告', svg: rainSvg });
+            else if (/黃色暴雨/i.test(msg)) list.push({ id: 'RAINA', name: '黃雨警告', svg: rainSvg });
+            if (/雷暴警告/i.test(msg)) list.push({ id: 'TS', name: '雷暴警告', svg: tsSvg });
+            if (/十號/i.test(msg)) list.push({ id: 'TC10', name: '十號風球', svg: tcSvg });
+            else if (/九號/i.test(msg)) list.push({ id: 'TC9', name: '九號風球', svg: tcSvg });
+            else if (/八號/i.test(msg)) list.push({ id: 'TC8', name: '八號風球', svg: tcSvg });
+            else if (/三號/i.test(msg)) list.push({ id: 'TC3', name: '三號風球', svg: tcSvg });
+            else if (/一號/i.test(msg)) list.push({ id: 'TC1', name: '一號風球', svg: tcSvg });
+            if (/酷熱天氣/i.test(msg)) list.push({ id: 'WHOT', name: '酷熱天氣', svg: `<i class="ph-fill ph-sun text-lg leading-none shrink-0"></i>` });
+            if (/寒冷天氣/i.test(msg)) list.push({ id: 'WCOLD', name: '寒冷天氣', svg: `<i class="ph-fill ph-snowflake text-lg leading-none shrink-0"></i>` });
+            if (/強烈季候風/i.test(msg)) list.push({ id: 'WMSGNL', name: '季候風信號', svg: `<i class="ph-fill ph-wind text-lg leading-none shrink-0"></i>` });
+            if (/山泥傾瀉/i.test(msg)) list.push({ id: 'LANDSLIP', name: '山泥傾瀉', svg: `<i class="ph-fill ph-mountains text-lg leading-none shrink-0"></i>` });
+            if (/水浸/i.test(msg)) list.push({ id: 'FLOOD', name: '水浸報告', svg: `<i class="ph-fill ph-waves text-lg leading-none shrink-0"></i>` });
+            return list;
+        }
+
+        function parseAQHI(data) {
+            if (!data) return null;
+            let list = [];
+            if (Array.isArray(data)) list = data;
+            else if (Array.isArray(data.records)) list = data.records;
+            else if (Array.isArray(data.data)) list = data.data;
+            else if (Array.isArray(data.stationData)) list = data.stationData;
+            else if (typeof data === 'object') list = Object.values(data).filter(v => v && typeof v === 'object');
+
+            if (list.length === 0) return null;
+
+            const priorityKeys = ['深水埗', 'Sham Shui Po', 'SSP', '旺角', 'Mong Kok', 'MK', '九龍城', 'Kowloon City', 'KC', '觀塘', 'Kwun Tong', 'KT'];
+            let matched = null;
+            for (const key of priorityKeys) {
+                matched = list.find(item => JSON.stringify(item).includes(key));
+                if (matched) break;
+            }
+            if (!matched) matched = list[0];
+
+            const val = matched.aqhi || matched.AQHI || matched.value || matched.aqhi_value || matched.index;
+            const risk = matched.health_risk_tc || matched.risk_tc || matched.health_risk || matched.risk || '';
+
+            if (val !== undefined && val !== null && !isNaN(parseInt(val, 10))) {
+                const numVal = parseInt(val, 10);
+                const riskStr = risk ? String(risk).trim() : (numVal <= 3 ? '低' : numVal <= 6 ? '中' : numVal <= 7 ? '高' : numVal <= 10 ? '甚高' : '嚴重');
+                return {
+                    val: String(numVal),
+                    risk: riskStr
+                };
+            }
+            return null;
+        }
+
+        function renderCoreWeather(rhr, fnd, flw, warnsum) {
+            cachedRhrData = rhr;
+            hasInitialWeatherLoaded = true;
+            lastWeatherSuccessTime = Date.now();
+
+            const outlookContent = (flw && flw.outlook) ? flw.outlook.trim() : (fnd?.generalSituation ? fnd.generalSituation.trim() : '暫無天氣展望');
+            currentOutlookFullText = outlookContent;
+            const outlookEl = document.getElementById('outlook-text');
+            if (outlookEl) outlookEl.textContent = outlookContent;
+
+            const serverTimeMs = parseHkoUpdateTime(rhr.updateTime);
+
+            const warningsRaw = Array.isArray(rhr.warningMessage)
+                ? rhr.warningMessage
+                : (rhr.warningMessage ? [rhr.warningMessage] : []);
+            let warningText = warningsRaw.map(w => String(w).trim()).filter(Boolean).join(' / ');
+
+            let activeWarnings = [];
+            if (warnsum && typeof warnsum === 'object' && Object.keys(warnsum).length > 0) {
+                for (const [k, v] of Object.entries(warnsum)) {
+                    if (v && typeof v === 'object') activeWarnings.push(getWarningInfo(k, v));
+                }
+            }
+            if (activeWarnings.length === 0 && warningText) {
+                activeWarnings = extractWarningsFromMessage(warningText);
+            }
+
+            currentAlertFullText = warningText;
+            currentActiveWarnings = activeWarnings;
+
+            const alertPanel = document.getElementById('alert-panel');
+            const badgeContainer = document.getElementById('alert-badges-container');
+            badgeContainer.replaceChildren();
+
+            if (activeWarnings.length === 0) {
+                badgeContainer.classList.add('hidden');
+            } else {
+                badgeContainer.classList.remove('hidden');
+                const visible = activeWarnings.slice(0, MAX_VISIBLE_BADGES);
+                visible.forEach(w => {
+                    const div = document.createElement('div');
+                    const isSevere = w.id.startsWith('TC') || w.id.includes('TC') || w.id === 'RAINB' || w.id.includes('RAINB');
+                    div.className = isSevere
+                        ? "flex items-center gap-1.5 bg-white text-black rounded-md px-2.5 py-1"
+                        : "flex items-center gap-1.5 text-white";
+                    div.innerHTML = `${w.svg}<span class="font-black text-base whitespace-nowrap leading-none">${escapeHTML(w.name)}</span>`;
+                    badgeContainer.appendChild(div);
+                });
+                if (activeWarnings.length > MAX_VISIBLE_BADGES) {
+                    const moreCount = activeWarnings.length - MAX_VISIBLE_BADGES;
+                    const div = document.createElement('div');
+                    div.className = "flex items-center gap-1 bg-gray-700 text-white rounded-md px-2 py-1";
+                    div.innerHTML = `<span class="font-black text-base leading-none">+${moreCount}</span>`;
+                    badgeContainer.appendChild(div);
+                }
+            }
+
+            const alertDetailsEl = document.getElementById('alert-details');
+            const alertDetailsTextEl = document.getElementById('alert-details-text');
+            if (warningText) {
+                alertDetailsTextEl.textContent = warningText;
+                alertDetailsEl.classList.remove('hidden');
+            } else {
+                alertDetailsTextEl.textContent = '';
+                alertDetailsEl.classList.add('hidden');
+            }
+
+            if (activeWarnings.length === 0 && !warningText) {
+                alertPanel.classList.add('hidden');
+            } else {
+                alertPanel.classList.remove('hidden');
+            }
+
+            updateStationTemperature();
+
+            const humObj = rhr.humidity?.data?.[0];
+            document.getElementById('humidity-display').textContent =
+                (humObj && humObj.value !== undefined) ? `${humObj.value}%` : '--%';
+
+            const uvContainer = document.getElementById('uv-display');
+            const uvObj = rhr.uvindex?.data?.[0];
+            uvContainer.textContent = (uvObj && uvObj.value !== undefined) ? `${uvObj.value}` : '0';
+
+            if (rhr.icon && rhr.icon.length > 0) {
+                document.getElementById('main-icon').className =
+                    `ph-fill ${weatherIcon(rhr.icon[0])} text-[5rem] text-black leading-none flex-none`;
+            }
+
+            if (flw && flw.forecastDesc) {
+                const match = flw.forecastDesc.match(/吹([^\s，。]+風)/);
+                if (match) document.getElementById('wind-display').textContent = match[1];
+            }
+
+            const fc = fnd.weatherForecast || [];
+            const forecastContainer = document.getElementById('forecast-row');
+
+            if (fc.length > 0) {
+                const today = fc[0];
+                currentWeatherFullText = today.forecastWeather || '--';
+                document.getElementById('weather-desc-text').textContent = currentWeatherFullText;
+                document.getElementById('temp-range').textContent =
+                    `${toTemp(today.forecastMaxtemp?.value)}° / ${toTemp(today.forecastMintemp?.value)}°`;
+                document.getElementById('psr-display').textContent = today.PSR || '--';
+
+                const now = getNow();
+                const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                const days = fc.slice(0, 5).map(wf => {
+                    const fd = wf.forecastDate || '';
+                    const d = new Date(+fd.slice(0,4), +fd.slice(4,6)-1, +fd.slice(6,8));
+                    const diff = Math.round((d - todayMid) / 86400000);
+                    const weekDay = ['週日','週一','週二','週三','週四','週五','週六'][d.getDay()];
+                    
+                    return {
+                        weekDay,
+                        isToday: diff === 0,
+                        max: toTemp(wf.forecastMaxtemp?.value),
+                        min: toTemp(wf.forecastMintemp?.value),
+                        icon: weatherIcon(wf.forecastIcon),
+                        psr: wf.PSR || '--'
+                    };
+                });
+
+                forecastContainer.replaceChildren();
+                days.forEach(d => {
+                    const card = document.createElement('div');
+                    card.className = `border-[2.5px] eink-border rounded-xl flex flex-col items-center justify-between py-1 px-0.5 h-full ${d.isToday ? 'bg-gray-200 border-[3px]' : 'bg-white'}`;
+
+                    const weekSpan = document.createElement('span');
+                    weekSpan.className = 'text-lg font-black leading-none text-black';
+                    weekSpan.textContent = d.weekDay;
+                    card.appendChild(weekSpan);
+
+                    const icon = document.createElement('i');
+                    icon.className = `ph-fill ${d.icon} text-[2rem] text-black my-0.5 leading-none`;
+                    card.appendChild(icon);
+
+                    const maxSpan = document.createElement('span');
+                    maxSpan.className = 'text-2xl font-black tabular-nums text-black leading-tight';
+                    maxSpan.textContent = `${d.max}°`;
+                    card.appendChild(maxSpan);
+
+                    const minSpan = document.createElement('span');
+                    minSpan.className = 'text-lg font-black tabular-nums text-black leading-tight';
+                    minSpan.textContent = `${d.min}°`;
+                    card.appendChild(minSpan);
+
+                    const psrSpan = document.createElement('span');
+                    psrSpan.className = 'text-xs font-black border-[2px] border-black rounded px-1.5 py-0.5 bg-white text-black whitespace-nowrap leading-none mt-0.5';
+                    psrSpan.textContent = `雨:${d.psr}`;
+                    card.appendChild(psrSpan);
+                    
+                    forecastContainer.appendChild(card);
+                });
+            }
+
+            const hkoUpdateTime = formatTimeHM(serverTimeMs);
+            const clientRefreshTime = formatTimeHM(Date.now());
+            document.getElementById('status-display').textContent = `更新於 ${hkoUpdateTime} (${clientRefreshTime})`;
+        }
+
+        async function fetchAuxiliaryData(ts) {
+            const rawAqhiUrl = `https://dashboard.epd.gov.hk/api/aqhi/aqhi.json?_t=${ts}`;
+            fetchViaProxy(rawAqhiUrl, 4000, false).then(aqhiData => {
+                const aqhiResult = parseAQHI(aqhiData);
+                if (aqhiResult) {
+                    document.getElementById('aqhi-display').innerHTML =
+                        `${escapeHTML(aqhiResult.val)} <span class="text-xl font-bold">${escapeHTML(aqhiResult.risk)}</span>`;
+                }
+            }).catch(() => {});
+        }
+
         async function fetchWeather(isManual = false) {
             if (isFetchingWeather) return;
             isFetchingWeather = true;
@@ -492,201 +881,35 @@
             const ts = Date.now();
             const rhrUrl = `https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc&_t=${ts}`;
             const fndUrl = `https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc&_t=${ts}`;
+            const flwUrl = `https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=flw&lang=tc&_t=${ts}`;
+            const warnUrl = `https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=tc&_t=${ts}`;
+
             const statusEl = document.getElementById('status-display');
+            const refreshBtnText = document.getElementById('refresh-btn-text');
 
             try {
-                // 僅首次載入或手動切換時提示「更新中…」，背景輪詢維持靜默防止墨水屏文字跳動
                 if (!hasInitialWeatherLoaded || isManual) {
                     statusEl.textContent = '更新中…';
+                    if (refreshBtnText) refreshBtnText.textContent = '…';
                 }
-                // rhr 負責校準時鐘，fnd 不參與校時，避免同次更新重複觸發重繪
-                const [rhr, fnd] = await Promise.all([
-                    fetchJSON(rhrUrl, 10000, true),
-                    fetchJSON(fndUrl, 10000, false)
+
+                const [rhr, fnd, flw, warnsum] = await Promise.all([
+                    fetchJSON(rhrUrl, 8000, true),
+                    fetchJSON(fndUrl, 8000, false),
+                    fetchJSON(flwUrl, 8000, false).catch(() => null),
+                    fetchJSON(warnUrl, 8000, false).catch(() => ({}))
                 ]);
-                cachedRhrData = rhr;
-                hasInitialWeatherLoaded = true;
 
-                // 提取天文台官方資料發佈時間（僅供介面顯示，不作時鐘校準避免觀測滯後導致時鐘倒流）
-                const serverTimeMs = parseHkoUpdateTime(rhr.updateTime);
+                renderCoreWeather(rhr, fnd, flw, warnsum);
+                fetchAuxiliaryData(ts);
 
-                // ① 警告橫幅安全插入 (嚴格限制為最多 2 行，防止推擠版面)
-                const warnings = Array.isArray(rhr.warningMessage)
-                    ? rhr.warningMessage
-                    : (rhr.warningMessage ? [rhr.warningMessage] : []);
-                const warningText = warnings.map(w => String(w).trim()).filter(Boolean).join(' / ');
-                const warnBar = document.getElementById('warning-bar');
-                const warnTextEl = document.getElementById('warning-text');
-                if (warningText) {
-                    renderTextWithBreaks(warnTextEl, warningText, /[，。]/, 2);
-                    warnBar.classList.remove('hidden');
-                } else {
-                    warnBar.classList.add('hidden');
-                }
-
-                // ② 即時氣溫
-                updateStationTemperature();
-
-                // ③ 相對濕度
-                const humObj = rhr.humidity?.data?.[0];
-                document.getElementById('humidity-display').textContent =
-                    (humObj && humObj.value !== undefined) ? `${humObj.value}%` : '--%';
-
-                // ④ 紫外線指數安全構建
-                const uvContainer = document.getElementById('uv-display');
-                uvContainer.replaceChildren();
-                const uvObj = rhr.uvindex?.data?.[0];
-                if (uvObj && uvObj.value !== undefined) {
-                    uvContainer.appendChild(document.createTextNode(`${uvObj.value} `));
-                    if (uvObj.desc) {
-                        const span = document.createElement('span');
-                        span.className = 'text-2xl';
-                        span.textContent = `(${uvObj.desc})`;
-                        uvContainer.appendChild(span);
-                    }
-                } else {
-                    uvContainer.appendChild(document.createTextNode('0 '));
-                    const span = document.createElement('span');
-                    span.className = 'text-2xl';
-                    span.textContent = '(低)';
-                    uvContainer.appendChild(span);
-                }
-
-                // ⑤ 主圖標
-                if (rhr.icon && rhr.icon.length > 0) {
-                    document.getElementById('main-icon').className =
-                        `ph-fill ${weatherIcon(rhr.icon[0])} text-[5.8rem] text-black leading-none flex-none`;
-                }
-
-                // ⑥ 九天天氣預報
-                const fc = fnd.weatherForecast || [];
-                const forecastContainer = document.getElementById('forecast-row');
-
-                if (fc.length > 0) {
-                    const today = fc[0];
-                    
-                    // 天氣敘述安全斷行 (無按鈕阻礙，最多支援 3 行，高度受控不推擠其他元件)
-                    renderTextWithBreaks(document.getElementById('weather-desc'), today.forecastWeather || '--', /[。，；]/, 3);
-
-                    // 今日最高 / 最低溫 (統一透過 toTemp 解析)
-                    document.getElementById('temp-range').textContent =
-                        `${toTemp(today.forecastMaxtemp?.value)}° / ${toTemp(today.forecastMintemp?.value)}°`;
-
-                    // 風力簡述安全構建
-                    const windContainer = document.getElementById('wind-display');
-                    windContainer.replaceChildren();
-                    if (today.forecastWind) {
-                        const w = String(today.forecastWind).replace(/[。，]/g, '').trim();
-                        const match = w.match(/^(.+?)([\d至]+級)$/);
-                        if (match) {
-                            let dir = match[1].replace(/風$/, '');
-                            if (!dir.endsWith('風') && dir.length <= 3) dir += '風';
-                            windContainer.appendChild(document.createTextNode(`${dir} `));
-                            const span = document.createElement('span');
-                            span.className = 'text-3xl';
-                            span.textContent = match[2];
-                            windContainer.appendChild(span);
-                        } else {
-                            windContainer.textContent = w;
-                        }
-                    } else {
-                        windContainer.textContent = '--';
-                    }
-                    
-                    // 降雨機率
-                    document.getElementById('psr-display').textContent = today.PSR || '--';
-
-                    // 五天預報卡片：以預報日期精準判斷今天高亮
-                    const now = getNow();
-                    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-                    const days = fc.slice(0, 5).map(wf => {
-                        const fd = wf.forecastDate || '';
-                        const d = new Date(+fd.slice(0,4), +fd.slice(4,6)-1, +fd.slice(6,8));
-                        const diff = Math.round((d - todayMid) / 86400000);
-                        const weekDay = ['週日','週一','週二','週三','週四','週五','週六'][d.getDay()];
-
-                        return {
-                            weekDay,
-                            isToday: diff === 0,
-                            max: toTemp(wf.forecastMaxtemp?.value),
-                            min: toTemp(wf.forecastMintemp?.value),
-                            icon: weatherIcon(wf.forecastIcon)
-                        };
-                    });
-
-                    // 完全以安全 DOM 方式構建卡片節點
-                    forecastContainer.replaceChildren();
-
-                    days.forEach(d => {
-                        const card = document.createElement('div');
-                        card.className = `border-[3px] eink-border rounded-xl flex flex-col items-center justify-center gap-2 py-3 ${d.isToday ? 'bg-gray-100' : 'bg-white'}`;
-
-                        const titleWrap = document.createElement('div');
-                        titleWrap.className = 'text-2xl font-black leading-none mt-1 flex flex-col items-center gap-1.5';
-                        const weekSpan = document.createElement('span');
-                        weekSpan.textContent = d.weekDay;
-                        titleWrap.appendChild(weekSpan);
-
-                        const dot = document.createElement('div');
-                        dot.className = `w-1.5 h-1.5 rounded-full ${d.isToday ? 'bg-gray-600' : 'bg-transparent'}`;
-                        titleWrap.appendChild(dot);
-                        card.appendChild(titleWrap);
-
-                        const icon = document.createElement('i');
-                        icon.className = `ph-fill ${d.icon} text-4xl text-black my-1`;
-                        card.appendChild(icon);
-
-                        const tempWrap = document.createElement('div');
-                        tempWrap.className = 'flex flex-col items-center leading-none gap-1.5';
-                        const maxSpan = document.createElement('span');
-                        maxSpan.className = 'text-3xl font-black tabular-nums';
-                        maxSpan.textContent = `${d.max}°`;
-                        const minSpan = document.createElement('span');
-                        minSpan.className = 'text-xl font-bold eink-text-gray tabular-nums';
-                        minSpan.textContent = `${d.min}°`;
-                        tempWrap.appendChild(maxSpan);
-                        tempWrap.appendChild(minSpan);
-                        card.appendChild(tempWrap);
-
-                        forecastContainer.appendChild(card);
-                    });
-                } else {
-                    // 若 HKO 返回空預報陣列，安全重設面板防止殘留舊資料
-                    document.getElementById('weather-desc').textContent = '--';
-                    document.getElementById('temp-range').textContent = '--° / --°';
-                    document.getElementById('wind-display').textContent = '--';
-                    document.getElementById('psr-display').textContent = '--';
-                    forecastContainer.replaceChildren();
-                }
-
-                // 顯示天文台官方觀測發布時間，語意精準且與實際資料完全吻合
-                const displayTime = formatUpdateTimeStr(serverTimeMs, rhr.updateTime);
-                statusEl.textContent = `更新於 ${displayTime}`;
             } catch (err) {
-                console.error('天氣讀取失敗:', err);
+                console.error('天氣數據讀取失敗:', err);
                 statusEl.textContent = '讀取失敗';
             } finally {
                 isFetchingWeather = false;
+                if (refreshBtnText) refreshBtnText.textContent = '刷新';
             }
-        }
-
-        /* ================= 8. 輪詢頻率與事件監聽 ================= */
-        function startWeatherTimer() {
-            if (weatherTimer) clearInterval(weatherTimer);
-            weatherTimer = setInterval(() => fetchWeather(false), isFastMode ? 5*60*1000 : 15*60*1000);
-        }
-
-        function toggleMode() {
-            isFastMode = !isFastMode;
-            const text = document.getElementById('mode-text');
-            if (isFastMode) {
-                text.textContent = '5分';
-            } else {
-                text.textContent = '15分';
-            }
-            fetchWeather(true);
-            startWeatherTimer();
         }
 
         async function init() {
@@ -709,23 +932,21 @@
                 await fetchHolidays(displayedYear);
                 renderCalendar();
             });
-            document.getElementById('mode-btn').addEventListener('click', toggleMode);
 
-            // 支援休眠喚醒與省電：分頁不可見時暫停計時器，恢復時立即校準時間與同步氣象
+            // 局部純數據刷新：杜絕跳轉與全螢幕黑白閃爍
+            document.getElementById('refresh-btn').addEventListener('click', async (e) => {
+                e.preventDefault();
+                await fetchWeather(true);
+            });
+
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    if (clockTimer) {
-                        clearTimeout(clockTimer);
-                        clockTimer = null;
-                    }
-                    if (weatherTimer) {
-                        clearInterval(weatherTimer);
-                        weatherTimer = null;
-                    }
+                    if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
                 } else {
                     alignClock();
-                    startWeatherTimer();
-                    fetchWeather(true);
+                    if (Date.now() - lastWeatherSuccessTime >= AUTO_REFRESH_INTERVAL_MS) {
+                        fetchWeather(false);
+                    }
                 }
             });
 
@@ -733,7 +954,6 @@
             alignClock();
             renderCalendar();
             await fetchWeather(true);
-            startWeatherTimer();
         }
 
         window.onload = init;
