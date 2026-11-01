@@ -3,27 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>柯士甸 ↔ 旺角 · 屯馬綫轉觀塘綫</title>
+    <title>NextTrainBus</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231e2a3a'/%3E%3Cpolyline points='12,44 24,44 32,36 40,44 52,44' fill='none' stroke='%239a6b3f' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolyline points='12,20 24,20 32,28 40,20 52,20' fill='none' stroke='%232f8f5b' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='20' cy='44' r='3.5' fill='%23fff'/%3E%3Ccircle cx='44' cy='20' r='3.5' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='4.5' fill='%23f0b429'/%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="柯士甸 ↔ 旺角">
-    <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
-    <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)">
     <style>
         :root {
             --bg: #f5f5f5;
             --text: #1a1a1a;
             --text-secondary: #5a5a5a;
             --text-muted: #6a6a6a;
-
             --card: #ffffff;
             --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-
             --border: #d4d4d4;
             --border-hover: #b0b0b0;
-
             --pill-bg: #ffffff;
             --pill-text: #3a3a3a;
             --pill-hover-bg: #fafafa;
@@ -31,47 +22,44 @@
             --pill-busy-text: #1a1a1a;
             --pill-busy-bg: #f0f0f0;
             --pill-error: #c62828;
-
-            --dir-bg: #ffffff;
-            --dir-btn-bg: #ffffff;
-            --dir-btn-text: #3a3a3a;
-            --dir-active-bg: #1a1a1a;
-            --dir-active-text: #ffffff;
-
+            --tab-bg: #ffffff;
+            --tab-btn-bg: #ffffff;
+            --tab-btn-text: #3a3a3a;
+            --tab-active-bg: #1a1a1a;
+            --tab-active-text: #ffffff;
             --train-item-bg: #f8f8f8;
             --train-plat-bg: #e8e8e8;
             --train-time: #1a1a1a;
             --train-time-imminent: #c62828;
-
             --station-code-bg: #f0f0f0;
             --station-code-text: #8a8a8a;
-
             --transfer-border: #9a9a9a;
             --transfer-tag-bg: #ececec;
             --transfer-tag-text: #4a4a4a;
-
             --line-tml-bg: #f5ede6;
             --line-tml-text: #9a6b3f;
             --line-ktl-bg: #e6f4ed;
             --line-ktl-text: #2f8f5b;
-
             --empty: #8a8a8a;
             --meta: #8a8a8a;
+            
+            /* 巴士專屬配色 */
+            --bus-bg: #f0f4ff;
+            --bus-text: #1e4f8a;
+            --bus-time: #1a1a1a;
+            --bus-rmk: #6a6a6a;
+            --bus-rmk-bg: #e2e8f0;
         }
-
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #0d0d0d;
                 --text: #f0f0f0;
                 --text-secondary: #a8a8a8;
                 --text-muted: #8a8a8a;
-
                 --card: #1a1a1a;
                 --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-
                 --border: #2e2e2e;
                 --border-hover: #4a4a4a;
-
                 --pill-bg: #1a1a1a;
                 --pill-text: #c8c8c8;
                 --pill-hover-bg: #242424;
@@ -79,35 +67,34 @@
                 --pill-busy-text: #f0f0f0;
                 --pill-busy-bg: #2a2a2a;
                 --pill-error: #ff6b6b;
-
-                --dir-bg: #1a1a1a;
-                --dir-btn-bg: #1a1a1a;
-                --dir-btn-text: #c8c8c8;
-                --dir-active-bg: #f0f0f0;
-                --dir-active-text: #0d0d0d;
-
+                --tab-bg: #1a1a1a;
+                --tab-btn-bg: #1a1a1a;
+                --tab-btn-text: #c8c8c8;
+                --tab-active-bg: #f0f0f0;
+                --tab-active-text: #0d0d0d;
                 --train-item-bg: #242424;
                 --train-plat-bg: #2e2e2e;
                 --train-time: #f0f0f0;
                 --train-time-imminent: #ff8a8a;
-
                 --station-code-bg: #242424;
                 --station-code-text: #8a8a8a;
-
                 --transfer-border: #6a6a6a;
                 --transfer-tag-bg: #2e2e2e;
                 --transfer-tag-text: #c8c8c8;
-
                 --line-tml-bg: #3a2e22;
                 --line-tml-text: #d4a574;
                 --line-ktl-bg: #1e3a2a;
                 --line-ktl-text: #6ecf9a;
-
                 --empty: #6a6a6a;
                 --meta: #6a6a6a;
+                
+                --bus-bg: #1a2230;
+                --bus-text: #8ab4f8;
+                --bus-time: #f0f0f0;
+                --bus-rmk: #a8a8a8;
+                --bus-rmk-bg: #2e3a4a;
             }
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -116,34 +103,33 @@
             transition: background 0.2s, color 0.2s;
         }
         .app { width: 100%; max-width: 640px; }
-
         header { margin-bottom: 20px; }
-        header h1 {
-            font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px;
-        }
+        header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
         header p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
-
-        .direction-bar {
-            background: var(--dir-bg); border-radius: 16px; padding: 16px; margin-bottom: 16px;
+        
+        .tab-bar {
+            background: var(--tab-bg); border-radius: 16px; padding: 12px; margin-bottom: 16px;
             box-shadow: var(--card-shadow); display: flex; gap: 8px;
             transition: background 0.2s, box-shadow 0.2s;
         }
-        .direction-bar button {
+        .tab-bar button {
             flex: 1; padding: 12px 8px; border: 1.5px solid var(--border); border-radius: 12px;
-            background: var(--dir-btn-bg); font-size: 0.95rem; font-weight: 500; color: var(--dir-btn-text);
+            background: var(--tab-btn-bg); font-size: 0.88rem; font-weight: 500; color: var(--tab-btn-text);
             cursor: pointer; transition: all 0.15s; text-align: center;
         }
-        .direction-bar button:hover { border-color: var(--border-hover); }
-        .direction-bar button.active {
-            background: var(--dir-active-bg); border-color: var(--dir-active-bg); color: var(--dir-active-text);
+        .tab-bar button:hover { border-color: var(--border-hover); }
+        .tab-bar button.active {
+            background: var(--tab-active-bg); border-color: var(--tab-active-bg); color: var(--tab-active-text);
         }
+        
         .stations { display: flex; flex-direction: column; gap: 14px; }
         .station-card {
             background: var(--card); border-radius: 16px; padding: 18px 20px;
-            box-shadow: var(--card-shadow);
-            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: var(--card-shadow); transition: background 0.2s, box-shadow 0.2s;
         }
         .station-card.transfer { border-left: 4px solid var(--transfer-border); }
+        .station-card.bus-card { border-left: 4px solid var(--bus-text); }
+        
         .station-header {
             display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;
         }
@@ -160,7 +146,10 @@
         .line-tag { font-size: 0.68rem; padding: 1px 7px; border-radius: 4px; font-weight: 500; margin-left: 6px; }
         .line-tml { background: var(--line-tml-bg); color: var(--line-tml-text); }
         .line-ktl { background: var(--line-ktl-bg); color: var(--line-ktl-text); }
+        
         .train-list { display: flex; flex-direction: column; gap: 8px; }
+        
+        /* 港鐵卡片樣式 */
         .train-item {
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 12px; background: var(--train-item-bg); border-radius: 10px; font-size: 0.88rem;
@@ -177,8 +166,34 @@
             color: var(--train-time); font-size: 0.95rem;
         }
         .train-time.imminent { color: var(--train-time-imminent); }
+        
         .empty { color: var(--empty); font-size: 0.82rem; padding: 12px 0; text-align: center; }
-
+        
+        /* 巴士卡片專屬樣式重構 */
+        .bus-eta-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; background: var(--bus-bg); border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .bus-eta-left { display: flex; flex-direction: column; gap: 6px; }
+        .bus-eta-dest { font-size: 0.9rem; font-weight: 600; color: var(--bus-text); }
+        
+        .bus-eta-time-row { display: flex; align-items: center; gap: 8px; }
+        .bus-eta-clock {
+            font-size: 1.15rem; font-weight: 600; color: var(--bus-time);
+            font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+        }
+        .bus-eta-rmk {
+            font-size: 0.7rem; color: var(--bus-rmk); background: var(--bus-rmk-bg);
+            padding: 2px 6px; border-radius: 4px; font-weight: 500;
+        }
+        
+        .bus-eta-countdown {
+            font-size: 1.25rem; font-weight: 700; color: var(--bus-text);
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+        }
+        .bus-eta-countdown.imminent { color: var(--train-time-imminent); }
+        
         .footer {
             margin-top: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
@@ -186,8 +201,7 @@
             display: inline-flex; align-items: center; gap: 6px;
             padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--border);
             background: var(--pill-bg); color: var(--pill-text); font-size: 0.78rem; font-weight: 500;
-            cursor: pointer; transition: all 0.15s; user-select: none;
-            white-space: nowrap;
+            cursor: pointer; transition: all 0.15s; user-select: none; white-space: nowrap;
         }
         .pill-btn:hover { border-color: var(--border-hover); background: var(--pill-hover-bg); }
         .pill-btn:active { transform: scale(0.97); }
@@ -202,7 +216,6 @@
         .pill-btn.busy .pill-dot { background: var(--pill-busy-border); animation: pulse 0.9s ease-in-out infinite; }
         .pill-btn.error .pill-dot { background: var(--pill-error); }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
         .meta { font-size: 0.72rem; color: var(--meta); text-align: center; line-height: 1.6; }
     </style>
 </head>
@@ -210,12 +223,13 @@
     <div class="app">
         <header>
             <h1>柯士甸 ↔ 旺角</h1>
-            <p>屯馬綫 轉 觀塘綫 · 何文田換乘</p>
+            <p>屯馬綫 轉 觀塘綫 · 何文田換乘 · A22 巴士</p>
         </header>
 
-        <div class="direction-bar" id="directionBar">
-            <button data-dir="toMOK" class="active">柯士甸 → 旺角</button>
-            <button data-dir="toAUS">旺角 → 柯士甸</button>
+        <div class="tab-bar" id="tabBar">
+            <button data-tab="toMOK" class="active">柯士甸 → 旺角</button>
+            <button data-tab="toAUS">旺角 → 柯士甸</button>
+            <button data-tab="busA22">A22 巴士</button>
         </div>
 
         <div class="stations" id="stations"></div>
@@ -226,7 +240,7 @@
                 <span id="pillText">5秒後更新</span>
             </button>
             <div class="meta">
-                資料來源：港鐵 Next Train API（getSchedule.php）
+                資料來源：港鐵 Next Train API · 城巴 ETA API（data.gov.hk）
             </div>
         </div>
     </div>
@@ -235,8 +249,14 @@
         (function () {
             'use strict';
 
-            const REFRESH_SEC = 5;
-            const API_BASE = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php';
+            const MTR_REFRESH_SEC = 5;
+            const BUS_REFRESH_SEC = 30;
+            
+            const MTR_API_BASE = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php';
+            const CTB_ETA_BASE = 'https://rt.data.gov.hk/v2/transport/citybus/eta';
+            
+            const AUSTIN_CTB_STOP_ID = '003897';
+            const A22_ROUTE = 'A22';
 
             const ROUTE = {
                 toMOK: [
@@ -249,28 +269,45 @@
                 ]
             };
 
-            let currentDir = 'toMOK';
+            let currentTab = 'toMOK';
             let countdownTimer = null;
             let refreshTimer = null;
-            let secondsLeft = REFRESH_SEC;
+            let secondsLeft = 0;
             let isBusy = false;
+            let currentRefreshSec = MTR_REFRESH_SEC;
 
             const elStations = document.getElementById('stations');
             const elPill = document.getElementById('refreshPill');
             const elPillText = document.getElementById('pillText');
+            const elTabBar = document.getElementById('tabBar');
+
+            /* ---------- 核心時間處理，強制 HKT ---------- */
+            function parseHKT(isoStr) {
+                if (!isoStr) return null;
+                let str = isoStr.replace(' ', 'T');
+                if (!str.includes('+') && !str.endsWith('Z')) str += '+08:00';
+                const d = new Date(str);
+                return isNaN(d.getTime()) ? null : d;
+            }
 
             function minutesUntil(isoStr) {
-                if (!isoStr) return Infinity;
-                const target = new Date(isoStr.replace(' ', 'T') + '+08:00');
-                return isNaN(target.getTime()) ? Infinity : (target - Date.now()) / 60000;
+                const target = parseHKT(isoStr);
+                if (!target) return Infinity;
+                return (target - Date.now()) / 60000;
             }
 
             function countdownText(isoStr) {
                 const mins = minutesUntil(isoStr);
                 if (!isFinite(mins)) return '—';
-                if (mins <= 0) return '即將到站';
-                if (mins < 1) return '1分鐘內';
-                return Math.floor(mins) + '分鐘';
+                if (mins <= 0) return '已到站';
+                if (mins < 1) return '即將到站';
+                return Math.floor(mins) + ' 分鐘';
+            }
+
+            function formatTime(isoStr) {
+                const d = parseHKT(isoStr);
+                if (!d) return '';
+                return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
             }
 
             function setPill(state, text) {
@@ -280,17 +317,17 @@
                 elPillText.textContent = text;
             }
 
+            /* ---------- 港鐵渲染 ---------- */
             function renderStationCard(station, trains) {
                 const card = document.createElement('div');
                 card.className = 'station-card' + (station.transfer ? ' transfer' : '');
-
                 let listHtml;
                 if (!trains || trains.length === 0) {
                     listHtml = '<div class="empty">暫無後續列車</div>';
                 } else {
                     listHtml = trains.slice(0, 3).map(function (t) {
                         const mins = minutesUntil(t.time);
-                        const imminent = mins <= 2;
+                        const imminent = mins <= 1;
                         return (
                             '<div class="train-item">' +
                                 '<div class="train-left">' +
@@ -302,7 +339,6 @@
                         );
                     }).join('');
                 }
-
                 card.innerHTML =
                     '<div class="station-header">' +
                         '<span class="station-name">' + station.name +
@@ -313,42 +349,40 @@
                         '<span class="station-code">' + station.code + '</span>' +
                     '</div>' +
                     '<div class="train-list">' + listHtml + '</div>';
-
                 return card;
             }
 
-            async function fetchStation(station) {
-                const url = API_BASE + '?line=' + encodeURIComponent(station.line) + '&sta=' + encodeURIComponent(station.code);
+            async function fetchMtrStation(station) {
+                const url = MTR_API_BASE + '?line=' + encodeURIComponent(station.line) + '&sta=' + encodeURIComponent(station.code);
                 const res = await fetch(url, { cache: 'no-store' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
-
                 const json = await res.json();
                 if (json.status !== 1) throw new Error(json.message || 'API status=' + json.status);
-
                 const dataKey = station.line + '-' + station.code;
                 const payload = json.data && json.data[dataKey];
                 if (!payload) return [];
-
+                
                 let all = (payload.UP || []).concat(payload.DOWN || []);
                 if (station.dirFilter) {
                     all = all.filter(function (t) { return t.dest === station.dirFilter; });
                 }
                 return all.sort(function (a, b) {
-                    return new Date(a.time.replace(' ', 'T')) - new Date(b.time.replace(' ', 'T'));
+                    const tA = parseHKT(a.time);
+                    const tB = parseHKT(b.time);
+                    return (tA ? tA.getTime() : 0) - (tB ? tB.getTime() : 0);
                 });
             }
 
-            async function refresh() {
+            async function refreshMtr() {
                 if (isBusy) return;
                 isBusy = true;
                 stopCountdown();
-
-                const stations = ROUTE[currentDir];
+                const stations = ROUTE[currentTab];
                 setPill('busy', '更新中…');
 
                 const results = await Promise.allSettled(
                     stations.map(function (s) {
-                        return fetchStation(s).then(function (trains) {
+                        return fetchMtrStation(s).then(function (trains) {
                             return { station: s, trains: trains };
                         });
                     })
@@ -369,34 +403,112 @@
 
                 elStations.innerHTML = '';
                 elStations.appendChild(fragment);
-
                 isBusy = false;
 
                 if (errorMsgs.length > 0) {
                     setPill('error', '更新失敗 · 再試');
                     console.warn('更新失敗：', errorMsgs.join(' | '));
                 } else {
-                    startCountdown();
+                    startCountdown(MTR_REFRESH_SEC);
                 }
             }
 
-            function startCountdown() {
-                secondsLeft = REFRESH_SEC;
-                setPill('', secondsLeft + '秒後更新');
+            /* ---------- A22 巴士渲染與獲取 ---------- */
+            async function fetchA22Eta() {
+                const url = CTB_ETA_BASE + '/CTB/' + AUSTIN_CTB_STOP_ID + '/' + A22_ROUTE;
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                if (!json.data || !Array.isArray(json.data)) return [];
+                
+                return json.data
+                    .filter(function (item) { return item.eta; })
+                    .sort(function (a, b) {
+                        const tA = parseHKT(a.eta);
+                        const tB = parseHKT(b.eta);
+                        return (tA ? tA.getTime() : 0) - (tB ? tB.getTime() : 0);
+                    });
+            }
 
+            function renderBusCard(etas) {
+                const card = document.createElement('div');
+                card.className = 'station-card bus-card';
+                let listHtml;
+                if (!etas || etas.length === 0) {
+                    listHtml = '<div class="empty">暫無 A22 實時到站資料</div>';
+                } else {
+                    listHtml = etas.slice(0, 3).map(function (item) {
+                        const mins = minutesUntil(item.eta);
+                        const imminent = mins <= 1;
+                        return (
+                            '<div class="bus-eta-item">' +
+                                '<div class="bus-eta-left">' +
+                                    '<span class="bus-eta-dest">往藍田站</span>' +
+                                    '<div class="bus-eta-time-row">' +
+                                        '<span class="bus-eta-clock">' + formatTime(item.eta) + '</span>' +
+                                        (item.rmk_tc ? '<span class="bus-eta-rmk">' + item.rmk_tc + '</span>' : '') +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="bus-eta-countdown' + (imminent ? ' imminent' : '') + '">' + countdownText(item.eta) + '</div>' +
+                            '</div>'
+                        );
+                    }).join('');
+                }
+                card.innerHTML =
+                    '<div class="station-header">' +
+                        '<span class="station-name">柯士甸站 <small>Austin Station</small>' +
+                            '<span class="line-tag" style="background:var(--bus-bg);color:var(--bus-text);">A22</span>' +
+                        '</span>' +
+                        '<span class="station-code">' + AUSTIN_CTB_STOP_ID + '</span>' +
+                    '</div>' +
+                    '<div class="train-list">' + listHtml + '</div>';
+                return card;
+            }
+
+            async function refreshBus() {
+                if (isBusy) return;
+                isBusy = true;
                 stopCountdown();
+                setPill('busy', '巴士更新中…');
+                
+                try {
+                    const etas = await fetchA22Eta();
+                    elStations.innerHTML = '';
+                    elStations.appendChild(renderBusCard(etas));
+                    setPill('', BUS_REFRESH_SEC + '秒後更新');
+                    startCountdown(BUS_REFRESH_SEC);
+                } catch (e) {
+                    elStations.innerHTML = '';
+                    elStations.appendChild(renderBusCard([]));
+                    setPill('error', '巴士資料失敗');
+                    console.warn('A22 ETA 取得失敗：', e.message);
+                } finally {
+                    isBusy = false;
+                }
+            }
+
+            /* ---------- 倒計時控制 ---------- */
+            function startCountdown(duration) {
+                currentRefreshSec = duration;
+                secondsLeft = duration;
+                setPill('', secondsLeft + '秒後更新');
+                
+                stopCountdown();
+                
                 countdownTimer = setInterval(function () {
                     secondsLeft -= 1;
                     if (secondsLeft <= 0) {
                         stopCountdown();
-                        refresh();
+                        executeRefresh();
                     } else {
                         setPill('', secondsLeft + '秒後更新');
                     }
                 }, 1000);
-
-                clearTimeout(refreshTimer);
-                refreshTimer = setTimeout(refresh, REFRESH_SEC * 1000);
+                
+                refreshTimer = setTimeout(function() {
+                    stopCountdown();
+                    executeRefresh();
+                }, duration * 1000);
             }
 
             function stopCountdown() {
@@ -404,33 +516,45 @@
                 if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; }
             }
 
-            function switchDirection(dir) {
-                if (dir === currentDir) return;
-                currentDir = dir;
-                document.querySelectorAll('#directionBar button').forEach(function (btn) {
-                    btn.classList.toggle('active', btn.getAttribute('data-dir') === dir);
+            function executeRefresh() {
+                if (currentTab === 'busA22') {
+                    refreshBus();
+                } else {
+                    refreshMtr();
+                }
+            }
+
+            /* ---------- Tab 切換 ---------- */
+            function switchTab(tab) {
+                if (tab === currentTab) return;
+                currentTab = tab;
+                elTabBar.querySelectorAll('button').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
                 });
+                
                 stopCountdown();
-                refresh();
+                executeRefresh();
             }
 
             function init() {
-                document.getElementById('directionBar').addEventListener('click', function (e) {
+                elTabBar.addEventListener('click', function (e) {
                     const btn = e.target.closest('button');
-                    if (btn) switchDirection(btn.getAttribute('data-dir'));
+                    if (btn) switchTab(btn.getAttribute('data-tab'));
                 });
 
                 elPill.addEventListener('click', function () {
-                    if (!isBusy) refresh();
+                    if (!isBusy) executeRefresh();
                 });
 
-                refresh();
+                // 初始載入
+                executeRefresh();
 
+                // 頁面可見性變化時處理
                 document.addEventListener('visibilitychange', function () {
                     if (document.hidden) {
                         stopCountdown();
                     } else {
-                        refresh();
+                        executeRefresh();
                     }
                 });
             }

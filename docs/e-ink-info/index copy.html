@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ink 交通天氣資訊屏-</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --eink-black: #000000;
+            --eink-white: #ffffff;
+        }
+        body {
+            background-color: var(--eink-white);
+            color: var(--eink-black);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang HK", "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        /* 淺灰色的極簡邊框設定 */
+        .eink-border-r {
+            border-right: 2px solid #ccc;
+        }
+        .eink-divider {
+            border-bottom: 2px solid #ccc;
+        }
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        /* 增加按鈕的點擊回饋 */
+        button:active {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen p-2 box-border flex gap-3">
+
+    <!-- 左側：時間與月曆 (佔比 55%) -->
+    <aside class="w-[55%] flex flex-col eink-border-r pr-3 h-full min-h-0">
+        <!-- 頂部：時間與日期 -->
+        <div class="flex-none flex flex-col items-center justify-center pt-2 pb-4 eink-divider">
+            <div id="time-display" class="text-[12rem] leading-none font-black tracking-tighter text-gray-800">--:--</div>
+            <div id="date-display" class="text-3xl font-bold mt-2 text-gray-600">載入中...</div>
+        </div>
+        
+        <!-- 底部：月曆區塊 -->
+        <div class="flex-1 flex flex-col pt-3 pb-1 justify-center min-h-0">
+            <div class="flex items-center justify-between mb-3 px-4 text-2xl font-bold text-gray-800 flex-none">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank"></i>
+                    <span id="calendar-month-title">--</span>
+                </div>
+                <div class="flex items-center gap-6 text-gray-400">
+                    <button id="prev-month" class="active:text-black"><i class="ph-bold ph-caret-left"></i></button>
+                    <button id="reset-month" class="active:text-black" title="回到本月">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a96,96,0,1,1-96-96c21.6,0,41.9,7.1,58.3,19.3l-10-10a8,8,0,0,1,11.4-11.4l24,24a8,8,0,0,1,0,11.4l-24,24a8,8,0,0,1-11.4-11.4l10.3-10.3A80,80,0,1,0,208,128a8,8,0,0,1,16,0Z"></path></svg>
+                    </button>
+                    <button id="next-month" class="active:text-black"><i class="ph-bold ph-caret-right"></i></button>
+                </div>
+            </div>
+            <div id="calendar-container" class="flex-1 min-h-0 w-full flex flex-col justify-center px-2"></div>
+        </div>
+    </aside>
+
+    <!-- 右側：天氣與交通 (佔比 45%) -->
+    <main class="w-[45%] flex flex-col h-full min-h-0 pb-1">
+        
+        <!-- 天氣與控制區塊 -->
+        <section class="h-[35%] flex flex-col justify-between pt-2 pb-3 eink-divider min-h-0">
+            <div class="flex items-center justify-between text-base font-bold text-gray-500 mb-1 flex-none px-1">
+                <div class="flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> <span id="weather-location">香港天文台</span></div>
+                
+                <!-- 省電模式控制按鈕 -->
+                <button id="power-mode-btn" class="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-gray-700 active:bg-gray-300 transition-colors border border-gray-300">
+                    <i id="power-icon" class="ph-fill ph-leaf text-gray-500"></i>
+                    <span id="power-text" class="text-sm">省電中</span>
+                </button>
+            </div>
+            
+            <div class="flex items-center justify-center gap-2 flex-1 min-h-0">
+                <i class="ph-fill ph-thermometer text-[5.5rem] text-gray-800"></i>
+                <div id="temp-display" class="text-[7rem] leading-none font-black tracking-tighter text-gray-800">--°</div>
+            </div>
+            
+            <div class="flex items-center justify-center gap-10 text-3xl font-bold w-full mt-1 flex-none">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-drop text-gray-600"></i>
+                    <span id="humidity-display">--%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-umbrella text-gray-600"></i>
+                    <span id="pop-display">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 交通區塊 -->
+        <section id="traffic-section" class="h-[65%] flex flex-col min-h-0 transition-opacity duration-500 opacity-30">
+            <!-- 港鐵 -->
+            <div class="flex-1 flex flex-col justify-center py-3 eink-divider min-h-0">
+                <div class="flex items-center gap-2 text-2xl font-bold mb-3 flex-none px-2 text-gray-800">
+                    <i class="ph-fill ph-train text-3xl"></i> 
+                    <span>柯士甸站 (屯馬線)</span>
+                </div>
+                <div class="flex flex-col gap-3 flex-1 justify-center px-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-3xl font-bold text-gray-600">往烏溪沙</span>
+                        <div class="flex items-baseline gap-4 flex-1 justify-end">
+                            <div class="w-24 text-right"><span id="mtr-up-1" class="text-6xl font-black text-gray-400">--</span><span class="text-2xl text-gray-500 font-bold ml-1" id="mtr-up-1-unit"></span></div>
+                            <div class="w-20 text-right"><span id="mtr-up-2" class="text-4xl font-bold text-gray-400">--</span><span class="text-xl text-gray-500 font-bold ml-1" id="mtr-up-2-unit"></span></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-3xl font-bold text-gray-600">往屯門</span>
+                        <div class="flex items-baseline gap-4 flex-1 justify-end">
+                            <div class="w-24 text-right"><span id="mtr-down-1" class="text-6xl font-black text-gray-400">--</span><span class="text-2xl text-gray-500 font-bold ml-1" id="mtr-down-1-unit"></span></div>
+                            <div class="w-20 text-right"><span id="mtr-down-2" class="text-4xl font-bold text-gray-400">--</span><span class="text-xl text-gray-500 font-bold ml-1" id="mtr-down-2-unit"></span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 巴士 -->
+            <div class="flex-[0.8] flex flex-col justify-center py-3 min-h-0">
+                <div class="flex items-center gap-2 text-2xl font-bold mb-3 flex-none px-2 text-gray-800">
+                    <i class="ph-fill ph-bus text-3xl"></i> 
+                    <span>A22 (往藍田)</span>
+                    <span id="bus-stop-name" class="text-base text-gray-400 ml-auto font-normal">柯士甸站</span>
+                </div>
+                <div class="flex items-center justify-around flex-1 px-4">
+                    <div class="flex items-baseline justify-center w-1/2">
+                        <span id="bus-eta-1" class="text-6xl font-black text-gray-400">--</span>
+                        <span class="text-2xl text-gray-500 font-bold ml-1" id="bus-eta-1-unit"></span>
+                    </div>
+                    <div class="flex items-baseline justify-center w-1/2">
+                        <span id="bus-eta-2" class="text-4xl font-bold text-gray-400">--</span>
+                        <span class="text-xl text-gray-500 font-bold ml-1" id="bus-eta-2-unit"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let a22StopId = null;
+        let hkHolidays = {}; 
+        let displayedYear = new Date().getFullYear();
+        let displayedMonth = new Date().getMonth();
+        
+        // 省電模式相關變數
+        let isPowerSaving = true;
+        let activeModeTimer = null;
+        let activeMinutesLeft = 0;
+        let trafficInterval = null;
+        let weatherInterval = null;
+        let clockTimer = null;
+
+        // 1. 獲取公眾假期 (加入年份快取，切換不重複抓)
+        async function fetchHolidays(year) {
+            if (hkHolidays[year]) return; 
+            try {
+                const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/HK`);
+                const data = await res.json();
+                hkHolidays[year] = data.map(ev => ev.date.replace(/-/g, ''));
+            } catch (error) {
+                console.error(`假期讀取失敗 (${year}):`, error);
+                hkHolidays[year] = [];
+            }
+        }
+
+        // 2. 渲染月曆
+        function renderCalendar() {
+            const now = new Date();
+            const year = displayedYear;
+            const month = displayedMonth;
+            const today = now.getDate();
+            const todayStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(today).padStart(2, '0')}`;
+
+            document.getElementById('calendar-month-title').innerText = `${String(month + 1).padStart(2, '0')}-${year}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let html = `<div class="grid grid-cols-7 gap-y-0.5 text-center w-full px-2">`;
+            
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            days.forEach(d => {
+                const isWeekend = d === '日' || d === '六';
+                html += `<div class="font-bold text-lg mb-1 ${isWeekend ? 'text-gray-400' : 'text-gray-600'}">${d}</div>`;
+            });
+
+            for (let i = 0; i < firstDay; i++) {
+                html += `<div></div>`;
+            }
+
+            const currentHolidays = hkHolidays[year] || [];
+            const isViewingCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${year}${String(month + 1).padStart(2, '0')}${String(i).padStart(2, '0')}`;
+                const currentDayOfWeek = new Date(year, month, i).getDay();
+                const isWeekend = currentDayOfWeek === 0 || currentDayOfWeek === 6;
+                const isHoliday = currentHolidays.includes(dateStr);
+                const isToday = isViewingCurrentMonth && (i === today);
+
+                let textClass = "text-[1.4rem] font-bold leading-none "; 
+                let circleClass = "flex items-center justify-center h-10 w-10 mx-auto rounded-full border-4 box-border ";
+
+                if (isToday) {
+                    circleClass += "border-black text-black ";
+                } else {
+                    circleClass += "border-transparent ";
+                    if (isWeekend || isHoliday) {
+                        textClass += "text-gray-400 ";
+                    } else {
+                        textClass += "text-black ";
+                    }
+                }
+
+                const marker = isHoliday && !isToday ? `<div class="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1"></div>` : `<div class="w-1.5 h-1.5 mt-1 opacity-0"></div>`;
+
+                html += `<div class="flex flex-col items-center justify-start"><div class="${circleClass}"><span class="${textClass}">${i}</span></div>${marker}</div>`;
+            }
+            html += `</div>`;
+            document.getElementById('calendar-container').innerHTML = html;
+        }
+
+        // 3. 格式化時間與日期 (極致省電版)
+        function formatTime(date) {
+            return date.getHours().toString().padStart(2, '0') + ':' + 
+                   date.getMinutes().toString().padStart(2, '0');
+        }
+
+        function updateTimeUI() {
+            const now = new Date();
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} (${days[now.getDay()]})`;
+            
+            document.getElementById('date-display').innerText = dateStr;
+            document.getElementById('time-display').innerText = formatTime(now);
+            
+            if (displayedYear === now.getFullYear() && displayedMonth === now.getMonth()) {
+                const currentDay = document.querySelector('.border-black');
+                if (!currentDay || currentDay.innerText !== String(now.getDate())) {
+                    renderCalendar();
+                }
+            }
+        }
+
+        // 精準對齊整點分鐘，避免每秒喚醒 CPU
+        function alignClock() {
+            updateTimeUI();
+            const now = new Date();
+            // 計算距離下一分鐘 00 秒還有多少毫秒
+            const msToNextMinute = 60000 - (now.getSeconds() * 1000 + now.getMilliseconds());
+            clockTimer = setTimeout(alignClock, msToNextMinute);
+        }
+
+        // 4. 獲取天氣數據 (整數溫度 + 防快取)
+        async function fetchWeather() {
+            try {
+                const res = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc&_t=${Date.now()}`);
+                const data = await res.json();
+
+                let targetTemp = data.temperature.data.find(d => d.place === "香港天文台");
+
+                if (targetTemp) {
+                    document.getElementById('temp-display').innerText = `${targetTemp.value}°`;
+                    document.getElementById('weather-location').innerText = targetTemp.place;
+                }
+
+                if (data.humidity && data.humidity.data.length > 0) {
+                    document.getElementById('humidity-display').innerText = `${data.humidity.data[0].value}%`;
+                }
+
+                const fndRes = await fetch(`https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc&_t=${Date.now()}`);
+                const fndData = await fndRes.json();
+                
+                if (fndData.weatherForecast && fndData.weatherForecast.length > 0) {
+                    const todayForecast = fndData.weatherForecast[0];
+                    if (todayForecast.PSR) {
+                        document.getElementById('pop-display').innerText = todayForecast.PSR;
+                    }
+                }
+            } catch (error) {
+                console.error("天氣讀取失敗:", error);
+            }
+        }
+
+        function formatETAUI(val, idPrefix) {
+            const el = document.getElementById(idPrefix);
+            const elUnit = document.getElementById(`${idPrefix}-unit`);
+            
+            if (!val || val === "--") {
+                el.innerText = "--";
+                el.className = idPrefix.includes('-1') ? "text-6xl font-black text-gray-400" : "text-4xl font-bold text-gray-400";
+                elUnit.innerText = "";
+            } else if (val === "0" || val === "Now") {
+                el.innerText = "Now";
+                el.className = "text-4xl font-bold text-gray-400";
+                elUnit.innerText = "";
+            } else {
+                el.innerText = val;
+                el.className = idPrefix.includes('-1') ? "text-6xl font-black text-gray-800" : "text-4xl font-bold text-gray-600";
+                elUnit.innerText = "m";
+            }
+        }
+
+        function clearTrafficUI() {
+            formatETAUI("--", 'mtr-up-1'); formatETAUI("--", 'mtr-up-2');
+            formatETAUI("--", 'mtr-down-1'); formatETAUI("--", 'mtr-down-2');
+            formatETAUI("--", 'bus-eta-1'); formatETAUI("--", 'bus-eta-2');
+        }
+
+        // 5. 獲取交通資訊
+        async function fetchETAs() {
+            if (isPowerSaving) return; // 省電模式下直接阻斷網絡請求
+
+            try {
+                // 港鐵
+                const mtrRes = await fetch(`https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TML&sta=AUS&_t=${Date.now()}`);
+                const mtrResult = await mtrRes.json();
+
+                if (mtrResult.status === 1 && mtrResult.data && mtrResult.data['TML-AUS']) {
+                    const upTrains = mtrResult.data['TML-AUS'].UP; 
+                    const downTrains = mtrResult.data['TML-AUS'].DOWN; 
+
+                    formatETAUI(upTrains && upTrains.length > 0 ? upTrains[0].ttnt : "--", 'mtr-up-1');
+                    formatETAUI(upTrains && upTrains.length > 1 ? upTrains[1].ttnt : "--", 'mtr-up-2');
+                    
+                    formatETAUI(downTrains && downTrains.length > 0 ? downTrains[0].ttnt : "--", 'mtr-down-1');
+                    formatETAUI(downTrains && downTrains.length > 1 ? downTrains[1].ttnt : "--", 'mtr-down-2');
+                }
+
+                // 城巴
+                if (!a22StopId) {
+                    const routeRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/route-stop/CTB/A22/inbound?_t=${Date.now()}`);
+                    const routeData = await routeRes.json();
+                    if (routeData.data && routeData.data.length > 0) {
+                        for (let i = 0; i < Math.min(20, routeData.data.length); i++) {
+                            const stopId = routeData.data[i].stop;
+                            const stopRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/stop/${stopId}?_t=${Date.now()}`);
+                            const stopInfo = await stopRes.json();
+                            if (stopInfo.data.name_tc.includes("柯士甸") || stopInfo.data.name_tc.includes("佐敦")) {
+                                a22StopId = stopId;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (a22StopId) {
+                    const etaRes = await fetch(`https://rt.data.gov.hk/v2/transport/citybus/eta/CTB/${a22StopId}/A22?_t=${Date.now()}`);
+                    const etaData = await etaRes.json();
+                    
+                    if (etaData.data && etaData.data.length > 0) {
+                        const validEtas = etaData.data.filter(e => e.dir === 'I' && !!e.eta).sort((a, b) => new Date(a.eta) - new Date(b.eta));
+                        
+                        if (validEtas.length > 0) {
+                            const diffMins1 = Math.floor((new Date(validEtas[0].eta.replace(' ', 'T')) - new Date()) / 60000);
+                            formatETAUI(diffMins1 <= 0 ? "Now" : diffMins1, 'bus-eta-1');
+                            
+                            if (validEtas.length > 1) {
+                                const diffMins2 = Math.floor((new Date(validEtas[1].eta.replace(' ', 'T')) - new Date()) / 60000);
+                                formatETAUI(diffMins2 <= 0 ? "Now" : diffMins2, 'bus-eta-2');
+                            } else {
+                                formatETAUI("--", 'bus-eta-2');
+                            }
+                        } else {
+                            formatETAUI("--", 'bus-eta-1'); formatETAUI("--", 'bus-eta-2');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("交通讀取失敗:", error);
+            }
+        }
+
+        // 6. 省電模式切換邏輯
+        function togglePowerMode() {
+            isPowerSaving = !isPowerSaving;
+            
+            clearInterval(trafficInterval);
+            clearInterval(weatherInterval);
+            clearInterval(activeModeTimer);
+            
+            const trafficSection = document.getElementById('traffic-section');
+            const pwrIcon = document.getElementById('power-icon');
+            const pwrText = document.getElementById('power-text');
+
+            if (isPowerSaving) {
+                // 進入省電模式
+                trafficSection.classList.add('opacity-30');
+                pwrIcon.className = "ph-fill ph-leaf text-gray-500";
+                pwrText.innerText = "省電中";
+                clearTrafficUI();
+                
+                weatherInterval = setInterval(fetchWeather, 30 * 60 * 1000); // 30分鐘更新一次天氣
+            } else {
+                // 進入實時模式
+                trafficSection.classList.remove('opacity-30');
+                pwrIcon.className = "ph-fill ph-lightning text-gray-800";
+                
+                activeMinutesLeft = 30; // 啟動 30 分鐘倒數
+                pwrText.innerText = `${activeMinutesLeft}m 後休眠`;
+                
+                fetchETAs();
+                fetchWeather();
+                
+                trafficInterval = setInterval(fetchETAs, 25000); // 25秒更新交通
+                weatherInterval = setInterval(fetchWeather, 5 * 60 * 1000); // 5分鐘更新天氣
+                
+                // 每分鐘更新倒數文字，歸零時回到省電模式
+                activeModeTimer = setInterval(() => {
+                    activeMinutesLeft--;
+                    if (activeMinutesLeft <= 0) {
+                        togglePowerMode(); // 自動切回省電
+                    } else {
+                        pwrText.innerText = `${activeMinutesLeft}m 後休眠`;
+                    }
+                }, 60000);
+            }
+        }
+
+        async function init() {
+            // 月曆控制按鈕事件
+            document.getElementById('prev-month').addEventListener('click', async () => {
+                displayedMonth--;
+                if (displayedMonth < 0) { displayedMonth = 11; displayedYear--; }
+                await fetchHolidays(displayedYear);
+                renderCalendar();
+            });
+
+            document.getElementById('next-month').addEventListener('click', async () => {
+                displayedMonth++;
+                if (displayedMonth > 11) { displayedMonth = 0; displayedYear++; }
+                await fetchHolidays(displayedYear);
+                renderCalendar();
+            });
+
+            document.getElementById('reset-month').addEventListener('click', async () => {
+                const now = new Date();
+                displayedYear = now.getFullYear();
+                displayedMonth = now.getMonth();
+                await fetchHolidays(displayedYear);
+                renderCalendar();
+            });
+            
+            // 綁定省電模式切換
+            document.getElementById('power-mode-btn').addEventListener('click', togglePowerMode);
+
+            // 系統初始化
+            await fetchHolidays(displayedYear);
+            alignClock(); // 啟動智慧對齊時鐘
+            renderCalendar();
+            await fetchWeather(); // 啟動時先抓一次天氣
+            
+            // 預設將其維持在省電模式狀態 (只抓天氣，交通不抓且變淡)
+            // 初始化時已經是 true，直接讓 UI 反映即可
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
