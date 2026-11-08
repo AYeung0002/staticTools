@@ -669,39 +669,81 @@
             return list;
         }
 
-        function parseAQHI(data) {
-            if (!data) return null;
-            let list = [];
-            if (Array.isArray(data)) list = data;
-            else if (Array.isArray(data.records)) list = data.records;
-            else if (Array.isArray(data.data)) list = data.data;
-            else if (Array.isArray(data.stationData)) list = data.stationData;
-            else if (typeof data === 'object') list = Object.values(data).filter(v => v && typeof v === 'object');
+function parseAQHI(data) {
+    if (!data) return null;
 
-            if (list.length === 0) return null;
+    // 兼容多種可能的 JSON 結構
+    let list = [];
+    if (Array.isArray(data)) {
+        list = data;
+    } else if (Array.isArray(data.records)) {
+        list = data.records;
+    } else if (Array.isArray(data.data)) {
+        list = data.data;
+    } else if (typeof data === 'object') {
+        list = Object.values(data).filter(v => v && typeof v === 'object');
+    }
 
-            const priorityKeys = ['深水埗', 'Sham Shui Po', 'SSP', '旺角', 'Mong Kok', 'MK', '九龍城', 'Kowloon City', 'KC', '觀塘', 'Kwun Tong', 'KT'];
-            let matched = null;
-            for (const key of priorityKeys) {
-                matched = list.find(item => JSON.stringify(item).includes(key));
-                if (matched) break;
-            }
-            if (!matched) matched = list[0];
+    if (list.length === 0) return null;
 
-            const val = matched.aqhi || matched.AQHI || matched.value || matched.aqhi_value || matched.index;
-            const risk = matched.health_risk_tc || matched.risk_tc || matched.health_risk || matched.risk || '';
+    // 優先選擇用戶關心地區的監測站，找不到則取第一筆
+    const priorityKeys = ['深水埗', 'Sham Shui Po', 'SSP', '旺角', 'Mong Kok', 'MK', '九龍城', 'Kowloon City', 'KC', '觀塘', 'Kwun Tong', 'KT'];
+    let matched = null;
+    for (const key of priorityKeys) {
+        matched = list.find(item => JSON.stringify(item).includes(key));
+        if (matched) break;
+    }
+    if (!matched) matched = list[0];
 
-            if (val !== undefined && val !== null && !isNaN(parseInt(val, 10))) {
-                const numVal = parseInt(val, 10);
-                const riskStr = risk ? String(risk).trim() : (numVal <= 3 ? '低' : numVal <= 6 ? '中' : numVal <= 7 ? '高' : numVal <= 10 ? '甚高' : '嚴重');
-                return {
-                    val: String(numVal),
-                    risk: riskStr
-                };
-            }
-            return null;
-        }
+    const val = matched.aqhi ?? matched.AQHI ?? matched.value ?? matched.aqhi_value ?? matched.index;
+    const rawRisk = matched.health_risk || matched.health_risk_tc || matched.risk || matched.risk_tc || '';
 
+    if (val === undefined || val === null || isNaN(parseInt(val, 10))) return null;
+
+    const numVal = parseInt(val, 10);
+    const riskStr = normalizeRisk(rawRisk, numVal);
+
+    return { val: String(numVal), risk: riskStr };
+}
+
+/**
+ * 將 AQHI 原始風險字串（中英文皆可）統一轉為中文等級
+ * 對應香港 AQHI 五個等級：低 / 中 / 高 / 甚高 / 嚴重
+ */
+function normalizeRisk(rawRisk, numVal) {
+    const str = String(rawRisk || '').trim();
+
+    // 如果原本已是中文，直接根據關鍵字判斷
+    if (/[低中高嚴]/.test(str)) {
+        if (str.includes('嚴重') || str.includes('嚴')) return '嚴重';
+        if (str.includes('甚高') || str.includes('非常高')) return '甚高';
+        if (str.includes('低')) return '低';
+        if (str.includes('中')) return '中';
+        if (str.includes('高')) return '高';
+    }
+
+    // 英文對照表
+    const enMap = {
+        'low': '低',
+        'moderate': '中',
+        'high': '高',
+        'very high': '甚高',
+        'veryhigh': '甚高',
+        'serious': '嚴重',
+        'severe': '嚴重'
+    };
+    const lower = str.toLowerCase().replace(/\s+/g, ' ');
+    for (const [en, zh] of Object.entries(enMap)) {
+        if (lower === en || lower.includes(en)) return zh;
+    }
+
+    // 最後按 AQHI 數值推算（環保署官方分級）
+    if (numVal <= 3) return '低';
+    if (numVal <= 6) return '中';
+    if (numVal === 7) return '高';
+    if (numVal <= 10) return '甚高';
+    return '嚴重';
+}
         function renderCoreWeather(rhr, fnd, flw, warnsum) {
             cachedRhrData = rhr;
             hasInitialWeatherLoaded = true;
@@ -862,17 +904,47 @@
             const clientRefreshTime = formatTimeHM(Date.now());
             document.getElementById('status-display').textContent = `更新於 ${hkoUpdateTime} (${clientRefreshTime})`;
         }
+// ═══════════════════════════════════════════════════════════════
+//  AQHI 空氣質素健康指數：改用 dashboard.data.gov.hk JSON API
+//  端點：https://dashboard.data.gov.hk/api/aqhi-individual?format=json
+//  回傳：[{station, aqhi, health_risk, publish_date}, ...]
+// ═══════════════════════════════════════════════════════════════
 
-        async function fetchAuxiliaryData(ts) {
-            const rawAqhiUrl = `https://dashboard.epd.gov.hk/api/aqhi/aqhi.json?_t=${ts}`;
-            fetchViaProxy(rawAqhiUrl, 4000, false).then(aqhiData => {
-                const aqhiResult = parseAQHI(aqhiData);
-                if (aqhiResult) {
-                    document.getElementById('aqhi-display').innerHTML =
-                        `${escapeHTML(aqhiResult.val)} <span class="text-xl font-bold">${escapeHTML(aqhiResult.risk)}</span>`;
-                }
-            }).catch(() => {});
+async function fetchAuxiliaryData(ts) {
+    const aqhiUrl = `https://dashboard.data.gov.hk/api/aqhi-individual?format=json&_t=${ts}`;
+    let data = null;
+
+    // 第一步：直接 fetch（dashboard.data.gov.hk 允許 CORS，通常可直接存取）
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(aqhiUrl, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timer);
+        if (res.ok) {
+            data = await res.json();
         }
+    } catch (e) {
+        console.warn('AQHI 直接 fetch 失敗，改用代理:', e);
+    }
+
+    // 第二步：備援，透過 CORS 代理
+    if (!data) {
+        data = await fetchViaProxy(aqhiUrl, 5000, false);
+    }
+
+    // 第三步：解析並更新 UI
+    const aqhiResult = parseAQHI(data);
+    const display = document.getElementById('aqhi-display');
+    if (!display) return;
+
+    if (aqhiResult) {
+        // 顯示格式：「數值 + 等級」（等級用較小字體區分）
+        display.innerHTML = `${escapeHTML(aqhiResult.val)} <span class="text-xl font-bold">${escapeHTML(aqhiResult.risk)}</span>`;
+    } else {
+        // 取不到時優雅顯示「--」
+        display.textContent = '--';
+    }
+}
 
         async function fetchWeather(isManual = false) {
             if (isFetchingWeather) return;
